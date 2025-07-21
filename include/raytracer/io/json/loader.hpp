@@ -187,11 +187,12 @@ object_variant<F> load_object(simdjson::dom::object&& obj) {
 	triangle_buffer.emplace_back(triangle_index);
 
 	if(triangle_buffer.size() == 3) {
-	    triangles.emplace_back(triangle<F>{{
-		triangle_buffer[0],
-		triangle_buffer[1],
-		triangle_buffer[2]
-	    }});
+	    triangles.emplace_back(triangle<F>{
+		vertices[triangle_buffer[0]],
+		vertices[triangle_buffer[1]],
+		vertices[triangle_buffer[2]],
+		{triangle_buffer[0], triangle_buffer[1], triangle_buffer[2]}
+	    });
 
 	    triangle_buffer.clear();
 	}

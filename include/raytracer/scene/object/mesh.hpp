@@ -27,14 +27,11 @@ struct mesh {
 	for(auto&& [idx, triangle] : triangles | std::views::enumerate) {
 	    auto [v0_idx, v1_idx, v2_idx] = triangle.vertex_indices;
 
-	    auto const& v0 = vertices[v0_idx];
-	    auto const& v1 = vertices[v1_idx];
-	    auto const& v2 = vertices[v2_idx];
-	    box.expand(v0);
-	    box.expand(v1);
-	    box.expand(v2);
+	    box.expand(triangle.v0);
+	    box.expand(triangle.v1);
+	    box.expand(triangle.v2);
 
-	    triangle_normals[idx] = cross(v1 - v0, v2 - v0).norm();
+	    triangle_normals[idx] = cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0).norm();
 
 	    vertex_normals[v0_idx] += triangle_normals[idx];
 	    vertex_normals[v1_idx] += triangle_normals[idx];
@@ -58,14 +55,11 @@ struct mesh {
 	    if(backface_culling && dot(ray.direction, triangle_normal) > 0)
 		continue;
 
-	    vec3<F> triangle_v0 = vertices[triangle.vertex_indices[0]];
-	    vec3<F> triangle_v1 = vertices[triangle.vertex_indices[1]];
-	    vec3<F> triangle_v2 = vertices[triangle.vertex_indices[2]];
-	    vec3<F> triangle_e0 = triangle_v1 - triangle_v0;
-	    vec3<F> triangle_e1 = triangle_v2 - triangle_v1;
-	    vec3<F> triangle_e2 = triangle_v0 - triangle_v2;
+	    vec3<F> triangle_e0 = triangle.v1 - triangle.v0;
+	    vec3<F> triangle_e1 = triangle.v2 - triangle.v1;
+	    vec3<F> triangle_e2 = triangle.v0 - triangle.v2;
 
-	    F dist = dot(triangle_normal, triangle_v0 - ray.origin);
+	    F dist = dot(triangle_normal, triangle.v0 - ray.origin);
 	    F proj = dot(triangle_normal, ray.direction);
 	    F hit_distance = dist / proj;
 
@@ -77,15 +71,15 @@ struct mesh {
 
 	    vec3<F> hit_position = ray.origin + (ray.direction * hit_distance);
 
-	    if(dot(triangle_normal, cross(triangle_e0, hit_position - triangle_v0)) < 0 ||
-	       dot(triangle_normal, cross(triangle_e1, hit_position - triangle_v1)) < 0 ||
-	       dot(triangle_normal, cross(triangle_e2, hit_position - triangle_v2)) < 0) {
+	    if(dot(triangle_normal, cross(triangle_e0, hit_position - triangle.v0)) < 0 ||
+	       dot(triangle_normal, cross(triangle_e1, hit_position - triangle.v1)) < 0 ||
+	       dot(triangle_normal, cross(triangle_e2, hit_position - triangle.v2)) < 0) {
 		continue;
 	    }
 
 	    if(!closest_hit.has_value() || hit_distance < closest_hit.value().distance) {
-		F u = cross(triangle_v0 - hit_position, triangle_v2 - triangle_v0).len() / cross(triangle_v1 - triangle_v0, triangle_v2 - triangle_v0).len();
-		F v = cross(triangle_v1 - triangle_v0, hit_position - triangle_v0).len() / cross(triangle_v1 - triangle_v0, triangle_v2 - triangle_v0).len();
+		F u = cross(triangle.v0 - hit_position, triangle.v2 - triangle.v0).len() / cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0).len();
+		F v = cross(triangle.v1 - triangle.v0, hit_position - triangle.v0).len() / cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0).len();
 		vec3<F> v0_normal = vertex_normals[triangle.vertex_indices[0]];
 		vec3<F> v1_normal = vertex_normals[triangle.vertex_indices[1]];
 		vec3<F> v2_normal = vertex_normals[triangle.vertex_indices[2]];
