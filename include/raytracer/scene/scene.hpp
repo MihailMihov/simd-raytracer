@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <raytracer/scene/object/object.hpp>
+#include <raytracer/scene/object/mesh.hpp>
 #include <raytracer/scene/material/material.hpp>
 #include <raytracer/scene/texture/texture.hpp>
 #include <raytracer/scene/camera.hpp>
@@ -18,5 +18,5 @@ struct scene {
     std::vector<light<F>> lights;
     std::unordered_map<std::string, texture_variant<F>> textures;
     std::vector<material_variant<F>> materials;
-    std::vector<object_variant<F>> objects;
+    std::vector<mesh_object<F>> meshes;
 };

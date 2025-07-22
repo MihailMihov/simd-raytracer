@@ -11,7 +11,7 @@
 #include <raytracer/scene/primitive/triangle.hpp>
 
 template <typename F>
-struct mesh {
+struct mesh_object {
     std::size_t material_idx;
     std::vector<vec3<F>> vertices;
     std::vector<vec3<F>> vertex_normals;
@@ -20,7 +20,7 @@ struct mesh {
     std::vector<vec3<F>> triangle_normals;
     aabb3<F> box;
 
-    mesh(std::size_t material_index, std::vector<vec3<F>> vertices, std::vector<vec2<F>> uvs, std::vector<triangle<F>> triangles)
+    mesh_object(std::size_t material_index, std::vector<vec3<F>> vertices, std::vector<vec2<F>> uvs, std::vector<triangle<F>> triangles)
 	: material_idx(material_index), vertices(vertices), uvs(uvs), triangles(triangles) {
 	triangle_normals.assign(triangles.size(), vec3<F>({0., 0., 0.}));
 	vertex_normals.assign(vertices.size(), vec3<F>({0., 0., 0.}));

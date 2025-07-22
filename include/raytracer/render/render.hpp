@@ -3,11 +3,11 @@
 #include <thread>
 #include <future>
 
+#include "raytracer/render/accel/accel.hpp"
+#include <raytracer/render/accel/kd_tree.hpp>
 #include <raytracer/scene/scene.hpp>
-#include <raytracer/scene/object/object_queries.hpp>
 #include <raytracer/scene/material/material_queries.hpp>
 #include <raytracer/scene/texture/texture_queries.hpp>
-#include <raytracer/render/accel/accel.hpp>
 #include <raytracer/render/tile/tile.hpp>
 #include <raytracer/render/tile/queue.hpp>
 #include <raytracer/render/tile/single.hpp>
@@ -19,11 +19,10 @@ constexpr double reflection_bias = 1e-5;
 constexpr double refraction_bias = 1e-5;
 constexpr int max_ray_depth = 6;
 
-template <typename F>
-constexpr image<F> render_frame(const accel_variant<F>& accel_variant, scheduling_type threading) {
-    const scene<F>& scene = *std::visit([&](const auto& accel) {
-	return accel.scene_ptr;
-    }, accel_variant);
+template <typename A, typename F>
+constexpr image<F> render_frame(const A& accel, scheduling_type threading)
+requires accelerator<A, F> {
+    const scene<F>& scene = *accel.scene_ptr;
 
     const std::size_t image_height = scene.config.image_height;
     const std::size_t image_width = scene.config.image_width;
@@ -50,14 +49,12 @@ constexpr image<F> render_frame(const accel_variant<F>& accel_variant, schedulin
 		direction = direction * camera.matrix;
 		ray3<F> ray(camera.position, direction.norm());
 
-		auto camera_hit = std::visit([&](const auto& accel) {
-		    return accel.trace(ray, true, 0., std::numeric_limits<F>::max());
-		}, accel_variant);
+		auto camera_hit = accel.trace(ray, true, 0., std::numeric_limits<F>::max());
 
 		if(!camera_hit.has_value())
 		    continue;
 
-		pixels[y][x] = color_hit(accel_variant, camera_hit.value(), 0);
+		pixels[y][x] = color_hit(accel, camera_hit.value(), 0);
 	    }
 	}
     };
@@ -93,21 +90,17 @@ constexpr image<F> render_frame(const accel_variant<F>& accel_variant, schedulin
 }
 
 template <typename F>
-constexpr auto is_occluded(const accel_variant<F>& accel_variant, ray3<F> ray, F max_t) {
-    const auto& scene = *std::visit([&](const auto& accel) {
-	return accel.scene_ptr;
-    }, accel_variant);
+constexpr auto is_occluded(const kd_tree_accel<F>& accelerator, ray3<F> ray, F max_t) {
+    const auto& scene = *accelerator.scene_ptr;
 
     while (0 < max_t) {
-	const auto& hit = std::visit([&](const auto& accel) {
-	    return accel.trace(ray, false, 0., max_t);
-	}, accel_variant);
+	const auto& hit = accelerator.trace(ray, false, 0., max_t);
 
 	if (!hit.has_value()) {
 	    return false;
 	}
 
-	const auto& material = scene.materials[material_idx_of(scene.objects[hit->object_idx])];
+	const auto& material = scene.materials[scene.meshes[hit->object_idx].material_idx];
 
 	if (!is_transmissive(material)) {
 	    return true;
@@ -121,17 +114,15 @@ constexpr auto is_occluded(const accel_variant<F>& accel_variant, ray3<F> ray, F
 }
 
 template<typename F>
-constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_record<F>& hit_record, const std::size_t ray_depth) {
-    const scene<F>& scene = *std::visit([&](const auto& accel) {
-	return accel.scene_ptr;
-    }, accel_variant);
+constexpr color<F> color_hit(const kd_tree_accel<F>& accelerator, const hit_record<F>& hit_record, const std::size_t ray_depth) {
+    const scene<F>& scene = *accelerator.scene_ptr;
 
     if(ray_depth == max_ray_depth)
 	return scene.config.background_color;
 
-    auto [incoming_ray, hit_position, hit_normal, face_normal, uvs, hit_distance, u, v, object_idx] = hit_record;
+    auto [incoming_ray, hit_position, hit_normal, face_normal, uvs, hit_distance, u, v, mesh_idx] = hit_record;
 
-    const auto& object = std::get<mesh<F>>(scene.objects[object_idx]);
+    const auto& object = scene.meshes[mesh_idx];
     const auto& material = scene.materials[object.material_idx];
 
     return std::visit([&](const auto& m) -> color<F> {
@@ -156,7 +147,7 @@ constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_re
 		}
 
 		ray3<F> shadow_ray(hit_position + shadow_bias * light_direction, light_direction);
-		if(is_occluded(accel_variant, shadow_ray, sphere_radius))
+		if(is_occluded(accelerator, shadow_ray, sphere_radius))
 		    continue;
 
 		if constexpr (std::same_as<M, diffuse_material<F>>) {
@@ -173,14 +164,12 @@ constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_re
 	    vec3<F> reflection_direction = incoming_ray.direction - hit_normal * dot(incoming_ray.direction, hit_normal) * 2.;
 	    ray3<F> reflection_ray(reflection_origin, reflection_direction);
 
-	    auto reflection_hit = std::visit([&](const auto& accel) {
-		return accel.trace(reflection_ray, false, reflection_bias, std::numeric_limits<F>::max());
-	    }, accel_variant);
+	    auto reflection_hit = accelerator.trace(reflection_ray, false, reflection_bias, std::numeric_limits<F>::max());
 
 	    if(!reflection_hit.has_value())
 		return scene.config.background_color;
 
-	    return color_hit(accel_variant, reflection_hit.value(), ray_depth + 1);	
+	    return color_hit(accelerator, reflection_hit.value(), ray_depth + 1);	
 	} else if constexpr (std::same_as<M, refractive_material<F>>) {
 	    vec3<F> n = m.smooth_shading ? hit_normal : face_normal;
 	    n = n.norm();
@@ -200,14 +189,12 @@ constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_re
 
 	    if(eta_r / eta_i < sin_i_n) {
 		ray3<F> reflection_ray(hit_position, i - n * 2. * dot(i, n));
-		auto reflection_hit = std::visit([&](const auto& accel) {
-		    return accel.trace(reflection_ray, false, reflection_bias, std::numeric_limits<F>::max());
-		}, accel_variant);
+		auto reflection_hit = accelerator.trace(reflection_ray, false, reflection_bias, std::numeric_limits<F>::max());
 
 		if(!reflection_hit.has_value())
 		    return color<F>{};
 
-		return color_hit(accel_variant, reflection_hit.value(), ray_depth + 1);	
+		return color_hit(accelerator, reflection_hit.value(), ray_depth + 1);	
 	    }
 
 	    F sin_r_mn = ((sin_i_n * eta_i) / eta_r);
@@ -216,23 +203,19 @@ constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_re
 	    vec3<F> r = -n * cos_r_mn + (i + n * cos_i_n).norm() * sin_r_mn;
 
 	    ray3<F> refraction_ray(hit_position, r);
-	    auto refraction_hit = std::visit([&](const auto& accel) {
-		return accel.trace(refraction_ray, false, refraction_bias, std::numeric_limits<F>::max());
-	    }, accel_variant);
+	    auto refraction_hit = accelerator.trace(refraction_ray, false, refraction_bias, std::numeric_limits<F>::max());
 
 	    color<F> refraction_color = color<F>{};
 	    if(refraction_hit.has_value()) {
-		refraction_color = color_hit(accel_variant, refraction_hit.value(), ray_depth + 1);
+		refraction_color = color_hit(accelerator, refraction_hit.value(), ray_depth + 1);
 	    }
 
 	    ray3<F> reflection_ray(hit_position, i - n * 2. * dot(i, n));
-	    auto reflection_hit = std::visit([&](const auto& accel) {
-		return accel.trace(reflection_ray, false, reflection_bias, std::numeric_limits<F>::max());
-	    }, accel_variant);
+	    auto reflection_hit = accelerator.trace(reflection_ray, false, reflection_bias, std::numeric_limits<F>::max());
 
 	    color<F> reflection_color = color<F>{};
 	    if(reflection_hit.has_value()) {
-		reflection_color = color_hit(accel_variant, reflection_hit.value(), ray_depth + 1);
+		reflection_color = color_hit(accelerator, reflection_hit.value(), ray_depth + 1);
 	    }
 
 	    F fresnel = 0.5 * std::pow(1.0 + dot(i, n), 5);

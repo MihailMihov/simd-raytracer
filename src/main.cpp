@@ -1,3 +1,4 @@
+#include "raytracer/render/accel/list.hpp"
 #include <filesystem>
 #include <fstream>
 #include <print>
@@ -7,9 +8,35 @@
 #include <raytracer/io/json/loader.hpp>
 #include <raytracer/scene/scene.hpp>
 #include <raytracer/render/render.hpp>
-#include <raytracer/render/accel/accel.hpp>
 
 constexpr std::size_t total_frames = 200;
+
+template <typename A, typename F>
+void render_build_up_video(A&& accel)
+requires accelerator<A, F> {
+    for (std::size_t frame = 1; frame <= total_frames; ++frame) {
+	std::print("\rGenerating frame {} out of {}...", frame, total_frames);
+	std::flush(std::cout);
+
+	accel.set_triangle_limit(frame * 25);
+
+	auto image = render_frame<kd_tree_accel<double>, double>(accel, scheduling_type::BUCKET_TILES);
+
+	std::ofstream output_file_stream(std::format("output/frame_{:04d}.ppm", frame), std::ios::out | std::ios::binary);
+	write_ppm(image, output_file_stream);
+    }
+
+    std::println("");
+}
+
+template <typename A, typename F>
+void render_still(A&& accel)
+requires accelerator<A, F> {
+    auto image = render_frame<kd_tree_accel<double>, double>(accel, scheduling_type::BUCKET_TILES);
+
+    std::ofstream output_file_stream("image.ppm", std::ios::out | std::ios::binary);
+    write_ppm(image, output_file_stream);
+}
 
 int main(int argc, char **argv) {
     if(argc != 2) {
@@ -22,23 +49,9 @@ int main(int argc, char **argv) {
 
     const auto scene = parse_scene_file<double>(scene_file_path);
 
-    auto accel_variant = build_accel<kd_tree_accel<double>, double>(std::make_shared<decltype(scene)>(scene));
+    auto accelerator = kd_tree_accel(std::make_shared<decltype(scene)>(scene));
 
-    for (std::size_t frame = 1; frame <= total_frames; ++frame) {
-	std::print("\rGenerating frame {} out of {}...", frame, total_frames);
-	std::flush(std::cout);
-
-	if (auto* accel = std::get_if<kd_tree_accel<double>>(&accel_variant)) {
-	    accel->set_primitives_limit(frame * 25);
-	};
-
-	auto image = render_frame(accel_variant, scheduling_type::BUCKET_TILES);
-
-	std::ofstream output_file_stream(std::format("output/frame_{:04d}.ppm", frame), std::ios::out | std::ios::binary);
-	write_ppm(image, output_file_stream);
-    }
-
-    std::println("");
+    render_still<kd_tree_accel<double>, double>(std::move(accelerator));
 
     return 0;
 }

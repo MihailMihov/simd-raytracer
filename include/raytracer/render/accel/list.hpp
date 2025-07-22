@@ -5,7 +5,6 @@
 
 #include <raytracer/core/math/aabb3.hpp>
 #include <raytracer/scene/scene.hpp>
-#include <raytracer/scene/object/object_queries.hpp>
 
 template <typename F>
 struct list_accel {
@@ -13,34 +12,32 @@ struct list_accel {
     aabb3<F> root_box;
 
     constexpr list_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
-	for (const auto& object_variant : this->scene_ptr->objects) {
-	    root_box.unite(bounding_box_of(object_variant));
+	for (const auto& mesh : this->scene_ptr->meshes) {
+	    root_box.unite(mesh.box);
 	}
     }
 
     constexpr std::optional<hit_record<F>> trace(const ray3<F>& ray, const bool backface_culling, const F t_min, const F t_max) const {
 	std::optional<hit_record<F>> closest_hit;
 
-	for(const auto& [object_idx, object_variant] : scene_ptr->objects | std::ranges::views::enumerate) {
+	for(const auto& [mesh_idx, mesh] : scene_ptr->meshes | std::ranges::views::enumerate) {
 	    if (!root_box.intersect(ray)) {
 		continue;
 	    }
 
-	    auto object_hit = std::visit([&](const auto& object) {
-		return object.intersect(ray, backface_culling, t_min, t_max);
-	    }, object_variant);
+	    auto maybe_hit = mesh.intersect(ray, backface_culling, t_min, t_max);
 
-	    if (object_hit && (!closest_hit || object_hit->distance < closest_hit->distance)) {
+	    if (maybe_hit && (!closest_hit || maybe_hit->distance < closest_hit->distance)) {
 		closest_hit = hit_record<F>{
-		    object_hit->ray,
-		    object_hit->position,
-		    object_hit->hit_normal,
-		    object_hit->face_normal,
-		    object_hit->uvs,
-		    object_hit->distance,
-		    object_hit->u,
-		    object_hit->v,
-		    static_cast<std::size_t>(object_idx)
+		    maybe_hit->ray,
+		    maybe_hit->position,
+		    maybe_hit->hit_normal,
+		    maybe_hit->face_normal,
+		    maybe_hit->uvs,
+		    maybe_hit->distance,
+		    maybe_hit->u,
+		    maybe_hit->v,
+		    static_cast<std::size_t>(mesh_idx)
 		};
 	    }
 	}

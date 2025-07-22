@@ -137,7 +137,7 @@ material_variant<F> load_material(simdjson::dom::object&& obj) {
 }
 
 template <typename F>
-object_variant<F> load_object(simdjson::dom::object&& obj, std::size_t object_idx) {
+mesh_object<F> load_mesh(simdjson::dom::object&& obj, std::size_t object_idx) {
     std::size_t material_index = obj["material_index"];
 
     std::vector<vec3<F>> vertices;
@@ -214,7 +214,7 @@ object_variant<F> load_object(simdjson::dom::object&& obj, std::size_t object_id
 	throw std::invalid_argument("triangle indices not multiple of 3");
     }
 
-    return mesh<F>{
+    return mesh_object<F>{
 	material_index,
 	vertices,
 	uvs,
@@ -248,7 +248,7 @@ scene<F> parse_scene_file(const std::filesystem::path& path) {
     }
 
     for(auto [object_idx, object] : doc["objects"] | std::ranges::views::enumerate) {
-	scene.objects.emplace_back(load_object<F>(object, object_idx));
+	scene.meshes.emplace_back(load_mesh<F>(object, object_idx));
     }
 
     return scene;
