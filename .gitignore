@@ -4,3 +4,7 @@ compile_commands.json
 *.ppm
 
 .cache/
+
+perf.data
+perf.data.old
+profile.perf
