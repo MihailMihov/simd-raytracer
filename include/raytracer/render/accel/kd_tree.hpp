@@ -87,7 +87,7 @@ struct kd_tree_accel {
 	}
     }
 
-    constexpr std::optional<hit_record<F>> trace(const ray3<F>& ray, const bool backface_culling, const F t_min, const F t_max) const {
+    constexpr std::optional<hit_record<F>> trace(const ray3<F>& ray, const bool backface_culling) const {
 	std::optional<hit_record<F>> closest_hit;
 
 	std::stack<std::size_t> nodes_to_check;
@@ -117,7 +117,7 @@ struct kd_tree_accel {
 		    }
 
 		    const auto& triangle = triangles[triangle_idx];
-		    const auto& maybe_hit = triangle.intersect(ray, backface_culling, t_min, t_max);
+		    const auto& maybe_hit = triangle.intersect(ray, backface_culling);
 
 		    if (maybe_hit && (!closest_hit || maybe_hit->distance < closest_hit->distance)) {
 			const auto& mesh = scene_ptr->meshes[triangle.mesh_idx];

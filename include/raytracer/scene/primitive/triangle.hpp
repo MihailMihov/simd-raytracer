@@ -30,7 +30,7 @@ struct triangle {
 	box.expand(v2);
     }
 
-    constexpr std::optional<primitive_hit<F>> intersect(const ray3<F>& ray, const bool backface_culling, const F t_min, const F t_max) const {
+    constexpr std::optional<primitive_hit<F>> intersect(const ray3<F>& ray, const bool backface_culling) const {
 	if(std::abs(dot(ray.direction, normal)) < std::numeric_limits<F>::epsilon())
 	    return std::nullopt;
 
@@ -41,7 +41,7 @@ struct triangle {
 	F proj = dot(normal, ray.direction);
 	F hit_distance = dist / proj;
 
-	if(hit_distance < t_min || t_max < hit_distance)
+	if(hit_distance < 0)
 	    return std::nullopt;
 
 	vec3<F> hit_position = ray.origin + (ray.direction * hit_distance);

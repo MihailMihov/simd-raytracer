@@ -43,7 +43,7 @@ struct mesh_object {
 	}
     }
 
-    constexpr std::optional<object_hit<F>> intersect(const ray3<F>& ray, bool backface_culling, F t_min, F t_max) const {
+    constexpr std::optional<object_hit<F>> intersect(const ray3<F>& ray, const bool backface_culling) const {
 	std::optional<object_hit<F>> closest_hit;
 
 	for(const auto& [triangle_idx, triangle] : triangles | std::ranges::views::enumerate) {
@@ -59,7 +59,7 @@ struct mesh_object {
 	    F proj = dot(triangle_normal, ray.direction);
 	    F hit_distance = dist / proj;
 
-	    if(hit_distance < t_min || t_max < hit_distance)
+	    if(hit_distance < 0)
 		continue;
 
 	    if(closest_hit.has_value() && closest_hit.value().distance < hit_distance)

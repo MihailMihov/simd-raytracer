@@ -20,7 +20,7 @@ requires accelerator<A, F> {
 
 	accel.set_triangle_limit(frame * 25);
 
-	auto image = render_frame<kd_tree_accel<double>, double>(accel, scheduling_type::BUCKET_TILES);
+	auto image = render_frame<A, F>(accel, scheduling_type::BUCKET_TILES);
 
 	std::ofstream output_file_stream(std::format("output/frame_{:04d}.ppm", frame), std::ios::out | std::ios::binary);
 	write_ppm(image, output_file_stream);
@@ -32,7 +32,7 @@ requires accelerator<A, F> {
 template <typename A, typename F>
 void render_still(A&& accel)
 requires accelerator<A, F> {
-    auto image = render_frame<kd_tree_accel<double>, double>(accel, scheduling_type::BUCKET_TILES);
+    auto image = render_frame<A, F>(accel, scheduling_type::BUCKET_TILES);
 
     std::ofstream output_file_stream("image.ppm", std::ios::out | std::ios::binary);
     write_ppm(image, output_file_stream);
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 
     auto accelerator = kd_tree_accel(std::make_shared<decltype(scene)>(scene));
 
-    render_still<kd_tree_accel<double>, double>(std::move(accelerator));
+    render_still<decltype(accelerator), double>(std::move(accelerator));
 
     return 0;
 }
