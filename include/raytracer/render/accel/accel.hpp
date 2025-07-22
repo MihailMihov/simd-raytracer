@@ -16,5 +16,9 @@ concept accelerator = requires(const A& accel, const ray3<F>& ray, bool backface
 template <typename A, typename F>
 requires accelerator<A, F>
 accel_variant<F> build_accel(std::shared_ptr<const scene<F>> scene_ptr) {
-    return A{ scene_ptr };
+    if constexpr (std::same_as<A, list_accel<F>>) {
+	return A(scene_ptr);
+    } else {
+	return A(scene_ptr);
+    }
 }

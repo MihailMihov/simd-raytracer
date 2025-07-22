@@ -2,7 +2,6 @@
 
 #include <thread>
 #include <future>
-#include <print>
 
 #include <raytracer/scene/scene.hpp>
 #include <raytracer/scene/object/object_queries.hpp>
@@ -21,7 +20,7 @@ constexpr double refraction_bias = 1e-5;
 constexpr int max_ray_depth = 6;
 
 template <typename F>
-constexpr image<F> render_scene(const accel_variant<F>& accel_variant, scheduling_type threading) {
+constexpr image<F> render_frame(const accel_variant<F>& accel_variant, scheduling_type threading) {
     const scene<F>& scene = *std::visit([&](const auto& accel) {
 	return accel.scene_ptr;
     }, accel_variant);
@@ -75,10 +74,6 @@ constexpr image<F> render_scene(const accel_variant<F>& accel_variant, schedulin
         case scheduling_type::BUCKET_TILES:
 	    queue = bucket_schedule(image_height, image_width, scene.config.bucket_size);
 	    break;
-    }
-
-    if !consteval {
-	std::println("Rendering {} tiles.", queue.size());
     }
 
     std::vector<std::future<void>> futures;

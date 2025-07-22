@@ -9,6 +9,8 @@
 #include <raytracer/render/render.hpp>
 #include <raytracer/render/accel/accel.hpp>
 
+constexpr std::size_t total_frames = 200;
+
 int main(int argc, char **argv) {
     if(argc != 2) {
 	std::println("Usage: ./raytracer FILE");
@@ -20,12 +22,23 @@ int main(int argc, char **argv) {
 
     const auto scene = parse_scene_file<double>(scene_file_path);
 
-    auto accel = build_accel<kd_tree_accel<double>, double>(std::make_shared<decltype(scene)>(scene));
+    auto accel_variant = build_accel<kd_tree_accel<double>, double>(std::make_shared<decltype(scene)>(scene));
 
-    auto image = render_scene(accel, scheduling_type::BUCKET_TILES);
+    for (std::size_t frame = 1; frame <= total_frames; ++frame) {
+	std::print("\rGenerating frame {} out of {}...", frame, total_frames);
+	std::flush(std::cout);
 
-    std::ofstream output_file_stream("image.ppm", std::ios::out | std::ios::binary);
-    write_ppm(image, output_file_stream);
+	if (auto* accel = std::get_if<kd_tree_accel<double>>(&accel_variant)) {
+	    accel->set_primitives_limit(frame * 25);
+	};
+
+	auto image = render_frame(accel_variant, scheduling_type::BUCKET_TILES);
+
+	std::ofstream output_file_stream(std::format("output/frame_{:04d}.ppm", frame), std::ios::out | std::ios::binary);
+	write_ppm(image, output_file_stream);
+    }
+
+    std::println("");
 
     return 0;
 }

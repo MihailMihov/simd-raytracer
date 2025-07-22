@@ -55,10 +55,6 @@ struct mesh {
 	    if(backface_culling && dot(ray.direction, triangle_normal) > 0)
 		continue;
 
-	    vec3<F> triangle_e0 = triangle.v1 - triangle.v0;
-	    vec3<F> triangle_e1 = triangle.v2 - triangle.v1;
-	    vec3<F> triangle_e2 = triangle.v0 - triangle.v2;
-
 	    F dist = dot(triangle_normal, triangle.v0 - ray.origin);
 	    F proj = dot(triangle_normal, ray.direction);
 	    F hit_distance = dist / proj;
@@ -71,9 +67,9 @@ struct mesh {
 
 	    vec3<F> hit_position = ray.origin + (ray.direction * hit_distance);
 
-	    if(dot(triangle_normal, cross(triangle_e0, hit_position - triangle.v0)) < 0 ||
-	       dot(triangle_normal, cross(triangle_e1, hit_position - triangle.v1)) < 0 ||
-	       dot(triangle_normal, cross(triangle_e2, hit_position - triangle.v2)) < 0) {
+	    if(dot(triangle_normal, cross(triangle.e0, hit_position - triangle.v0)) < 0 ||
+	       dot(triangle_normal, cross(triangle.e1, hit_position - triangle.v1)) < 0 ||
+	       dot(triangle_normal, cross(triangle.e2, hit_position - triangle.v2)) < 0) {
 		continue;
 	    }
 

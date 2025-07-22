@@ -26,6 +26,7 @@ struct kd_tree_accel {
     std::shared_ptr<const scene<F>> scene_ptr;
     std::vector<primitive_variant<F>> primitives;
     std::vector<kd_tree_node> tree;
+    std::size_t primitives_limit;
 
     kd_tree_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
 	aabb3<F> root_box;
@@ -41,12 +42,18 @@ struct kd_tree_accel {
 	    }
 	}
 
+	primitives_limit = primitive_indices.size();
+
 	kd_tree_node root{root_box, -1, -1, -1, {}};
 	tree.push_back(root);
 	build_tree(0, 0, primitive_indices);
     }
 
-    void build_tree(const int32_t parent_idx, const std::size_t depth, const std::vector<std::size_t>& primitive_indices) {
+    constexpr void set_primitives_limit(const std::size_t new_primitives_limit) noexcept {
+	primitives_limit = new_primitives_limit;
+    }
+
+    constexpr void build_tree(const int32_t parent_idx, const std::size_t depth, const std::vector<std::size_t>& primitive_indices) {
 	if (depth == max_depth || primitive_indices.size() <= max_primitive_count) {
 	    tree[parent_idx].primitive_indices = primitive_indices;
 	    return;
@@ -108,7 +115,11 @@ struct kd_tree_accel {
 		    nodes_to_check.push(node.child1);
 		}
 	    } else {
-		for(const auto& primitive_idx : node.primitive_indices) {
+		for (const auto& primitive_idx : node.primitive_indices) {
+		    if (primitives_limit < primitive_idx) {
+			continue;
+		    }
+
 		    const auto& primitive_variant = primitives[primitive_idx];
 		    std::visit([&](const auto& primitive) {
 			const auto& maybe_hit = primitive.intersect(ray, backface_culling, t_min, t_max);
