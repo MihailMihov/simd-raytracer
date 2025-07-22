@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS YES)
 
+add_compile_options(-Wall -Wextra -pedantic -Werror)
+
+if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    add_compile_options(-fno-omit-frame-pointer)
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(

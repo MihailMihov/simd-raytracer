@@ -1,5 +1,7 @@
 #pragma once
 
+#include <variant>
+
 #include <raytracer/core/math/aabb3.hpp>
 #include <raytracer/scene/primitive/primitive.hpp>
 

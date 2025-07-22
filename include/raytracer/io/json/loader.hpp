@@ -137,7 +137,7 @@ material_variant<F> load_material(simdjson::dom::object&& obj) {
 }
 
 template <typename F>
-object_variant<F> load_object(simdjson::dom::object&& obj) {
+object_variant<F> load_object(simdjson::dom::object&& obj, std::size_t object_idx) {
     std::size_t material_index = obj["material_index"];
 
     std::vector<vec3<F>> vertices;
@@ -184,14 +184,26 @@ object_variant<F> load_object(simdjson::dom::object&& obj) {
     std::vector<triangle<F>> triangles;
     std::vector<std::size_t> triangle_buffer;
     for(auto triangle_index : obj["triangles"]) {
-	triangle_buffer.emplace_back(triangle_index);
+	triangle_buffer.push_back(triangle_index);
 
 	if(triangle_buffer.size() == 3) {
-	    triangles.emplace_back(triangle<F>{
+	    vec3<vec2<F>> triangle_uvs{};
+
+	    if (!uvs.empty()) {
+		triangle_uvs = vec3<vec2<F>>{
+		    uvs[triangle_buffer[0]],
+		    uvs[triangle_buffer[1]],
+		    uvs[triangle_buffer[2]]
+		};
+	    }
+
+	    triangles.push_back(triangle<F>{
 		vertices[triangle_buffer[0]],
 		vertices[triangle_buffer[1]],
 		vertices[triangle_buffer[2]],
-		{triangle_buffer[0], triangle_buffer[1], triangle_buffer[2]}
+		{triangle_buffer[0], triangle_buffer[1], triangle_buffer[2]},
+		object_idx,
+		triangle_uvs 
 	    });
 
 	    triangle_buffer.clear();
@@ -235,8 +247,8 @@ scene<F> parse_scene_file(const std::filesystem::path& path) {
 	scene.materials.emplace_back(load_material<F>(material));
     }
 
-    for(auto object : doc["objects"]) {
-	scene.objects.emplace_back(load_object<F>(object));
+    for(auto [object_idx, object] : doc["objects"] | std::ranges::views::enumerate) {
+	scene.objects.emplace_back(load_object<F>(object, object_idx));
     }
 
     return scene;

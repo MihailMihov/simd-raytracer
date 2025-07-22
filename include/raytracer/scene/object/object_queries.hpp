@@ -4,7 +4,7 @@
 #include "raytracer/scene/primitive/primitive.hpp"
 
 template <typename F>
-constexpr std::size_t material_index_of(const object_variant<F>& ov) {
+constexpr std::size_t material_idx_of(const object_variant<F>& ov) {
     return std::visit([](const auto& object) {
 	return object.material_idx;
     }, ov);

@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
 
     const auto scene = parse_scene_file<double>(scene_file_path);
 
-    auto accel = build_accel<list_accel<double>, double>(std::make_shared<decltype(scene)>(scene));
+    auto accel = build_accel<kd_tree_accel<double>, double>(std::make_shared<decltype(scene)>(scene));
 
     auto image = render_scene(accel, scheduling_type::BUCKET_TILES);
 

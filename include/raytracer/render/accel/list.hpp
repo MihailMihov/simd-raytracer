@@ -12,7 +12,7 @@ struct list_accel {
     std::shared_ptr<const scene<F>> scene_ptr;
     aabb3<F> root_box;
 
-    list_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
+    constexpr list_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
 	for (const auto& object_variant : this->scene_ptr->objects) {
 	    root_box.unite(bounding_box_of(object_variant));
 	}
@@ -34,12 +34,13 @@ struct list_accel {
 		closest_hit = hit_record<F>{
 		    object_hit->ray,
 		    object_hit->position,
-		    object_hit->normal,
+		    object_hit->hit_normal,
+		    object_hit->face_normal,
+		    object_hit->uvs,
 		    object_hit->distance,
 		    object_hit->u,
 		    object_hit->v,
-		    static_cast<std::size_t>(object_idx),
-		    object_hit->triangle_idx
+		    static_cast<std::size_t>(object_idx)
 		};
 	    }
 	}

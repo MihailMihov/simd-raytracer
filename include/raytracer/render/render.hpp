@@ -22,8 +22,8 @@ constexpr int max_ray_depth = 6;
 
 template <typename F>
 constexpr image<F> render_scene(const accel_variant<F>& accel_variant, scheduling_type threading) {
-    const scene<F>& scene = std::visit([&](const auto& accel) {
-	return *accel.scene_ptr;
+    const scene<F>& scene = *std::visit([&](const auto& accel) {
+	return accel.scene_ptr;
     }, accel_variant);
 
     const std::size_t image_height = scene.config.image_height;
@@ -99,12 +99,12 @@ constexpr image<F> render_scene(const accel_variant<F>& accel_variant, schedulin
 
 template <typename F>
 constexpr auto is_occluded(const accel_variant<F>& accel_variant, ray3<F> ray, F max_t) {
-    const scene<F>& scene = std::visit([&](const auto& accel) {
-	return *accel.scene_ptr;
+    const auto& scene = *std::visit([&](const auto& accel) {
+	return accel.scene_ptr;
     }, accel_variant);
 
     while (0 < max_t) {
-	auto hit = std::visit([&](const auto& accel) {
+	const auto& hit = std::visit([&](const auto& accel) {
 	    return accel.trace(ray, false, 0., max_t);
 	}, accel_variant);
 
@@ -112,8 +112,7 @@ constexpr auto is_occluded(const accel_variant<F>& accel_variant, ray3<F> ray, F
 	    return false;
 	}
 
-	const auto& object = std::get<mesh<F>>(scene.objects[hit->object_idx]);
-	const auto& material = scene.materials[object.material_idx];
+	const auto& material = scene.materials[material_idx_of(scene.objects[hit->object_idx])];
 
 	if (!is_transmissive(material)) {
 	    return true;
@@ -128,14 +127,14 @@ constexpr auto is_occluded(const accel_variant<F>& accel_variant, ray3<F> ray, F
 
 template<typename F>
 constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_record<F>& hit_record, const std::size_t ray_depth) {
-    const scene<F>& scene = std::visit([&](const auto& accel) {
-	return *accel.scene_ptr;
+    const scene<F>& scene = *std::visit([&](const auto& accel) {
+	return accel.scene_ptr;
     }, accel_variant);
 
     if(ray_depth == max_ray_depth)
 	return scene.config.background_color;
 
-    auto [incoming_ray, hit_position, hit_normal, hit_distance, u, v, object_idx, face_idx] = hit_record;
+    auto [incoming_ray, hit_position, hit_normal, face_normal, uvs, hit_distance, u, v, object_idx] = hit_record;
 
     const auto& object = std::get<mesh<F>>(scene.objects[object_idx]);
     const auto& material = scene.materials[object.material_idx];
@@ -154,13 +153,11 @@ constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_re
 
 		light_direction = light_direction.norm();
 
-		vec3<F> triangle_normal = object.triangle_normals[face_idx];
-
 		F cosine_law;
 		if(m.smooth_shading) {
 		    cosine_law = std::max(0., dot(light_direction, hit_normal));
 		} else {
-		    cosine_law = std::max(0., dot(light_direction, triangle_normal));
+		    cosine_law = std::max(0., dot(light_direction, face_normal));
 		}
 
 		ray3<F> shadow_ray(hit_position + shadow_bias * light_direction, light_direction);
@@ -171,10 +168,7 @@ constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_re
 		    final_color = final_color + color<F>(m.albedo * ((light.intensity / sphere_area) * cosine_law));
 		} else {
 		    const auto& texture_variant = scene.textures.at(m.texture);
-		    vec2<F> uv0 = object.uvs[object.triangles[face_idx].vertex_indices[0]];
-		    vec2<F> uv1 = object.uvs[object.triangles[face_idx].vertex_indices[1]];
-		    vec2<F> uv2 = object.uvs[object.triangles[face_idx].vertex_indices[2]]; 
-		    final_color = final_color + color<F>(sample(texture_variant, hit_record, {uv0, uv1, uv2}) * ((light.intensity / sphere_area) * cosine_law));
+		    final_color = final_color + color<F>(sample(texture_variant, hit_record, uvs) * ((light.intensity / sphere_area) * cosine_law));
 		}
 	    }
 
@@ -193,7 +187,7 @@ constexpr color<F> color_hit(const accel_variant<F>& accel_variant, const hit_re
 
 	    return color_hit(accel_variant, reflection_hit.value(), ray_depth + 1);	
 	} else if constexpr (std::same_as<M, refractive_material<F>>) {
-	    vec3<F> n = m.smooth_shading ? hit_normal : object.triangle_normals[face_idx];
+	    vec3<F> n = m.smooth_shading ? hit_normal : face_normal;
 	    n = n.norm();
 	    vec3<F> i = incoming_ray.direction;
 	    i = i.norm();

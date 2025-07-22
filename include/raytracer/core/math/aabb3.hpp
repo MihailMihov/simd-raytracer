@@ -32,6 +32,10 @@ struct aabb3 {
 
     [[nodiscard]] constexpr std::pair<aabb3<F>, aabb3<F>> split(uint32_t axis) const {
 	if (axis == 0) {
+	    if (min.x == max.x) {
+		return split(1);
+	    }
+
 	    F mid = min.x + ((max.x - min.x) / 2.);
 
 	    aabb3<F> aabb0(*this);
@@ -42,6 +46,10 @@ struct aabb3 {
 
 	    return std::make_pair(aabb0, aabb1);
 	} else if (axis == 1) {
+	    if (min.y == max.y) {
+		return split(2);
+	    }
+
 	    F mid = min.y + ((max.y - min.y) / 2.);
 
 	    aabb3<F> aabb0(*this);
@@ -52,6 +60,10 @@ struct aabb3 {
 
 	    return std::make_pair(aabb0, aabb1);
 	} else {
+	    if (min.z == max.z) {
+		return split(0);
+	    }
+
 	    F mid = min.z + ((max.z - min.z) / 2.);
 
 	    aabb3<F> aabb0(*this);

@@ -10,7 +10,7 @@ struct edge_texture {
     color<F> inner_color;
     F edge_width;
 
-    color<F> sample(const hit_record<F>& hit, const vec3<vec2<F>>& uvs) const {
+    color<F> sample(const hit_record<F>& hit, [[maybe_unused]] const vec3<vec2<F>>& uvs) const {
 	const F hit_u = hit.u;
 	const F hit_v = hit.v;
 	const F hit_w = 1. - hit_u - hit_v;
