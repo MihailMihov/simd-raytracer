@@ -34,18 +34,18 @@ requires accelerator<A, F> {
     auto tile_worker = [&](render_tile tile) {
 	for(std::size_t y = tile.y0; y < tile.y1; ++y) {
 	    for(std::size_t x = tile.x0; x < tile.x1; ++x) {
-		F raster_x = x + 0.5;
-		F raster_y = y + 0.5;
+		F raster_x = x + static_cast<F>(0.5);
+		F raster_y = y + static_cast<F>(0.5);
 
 		F ndc_x = raster_x / image_width;
 		F ndc_y = raster_y / image_height;
 
-		F screen_x = (2.0 * ndc_x) - 1.0;
-		F screen_y = 1.0 - (2.0 * ndc_y);
+		F screen_x = (static_cast<F>(2.) * ndc_x) - static_cast<F>(1.);
+		F screen_y = static_cast<F>(1.) - (static_cast<F>(2.) * ndc_y);
 
 		screen_x *= aspect_ratio;
 
-		vec3<F> direction({screen_x, screen_y, -1.0});
+		vec3<F> direction({screen_x, screen_y, static_cast<F>(-1.)});
 		direction = direction * camera.matrix;
 		ray3<F> ray(camera.position, direction.norm());
 
@@ -54,7 +54,7 @@ requires accelerator<A, F> {
 		if(!camera_hit.has_value())
 		    continue;
 
-		pixels[y][x] = color_hit(accel, camera_hit.value(), 0);
+		pixels[y][x] = color_hit(accel, camera_hit.value(), 0uz);
 	    }
 	}
     };
