@@ -1,10 +1,44 @@
 #pragma once
 
+#include <cassert>
 #include <cmath>
+#include <utility>
 
 template <typename F>
 struct vec3 {
     F x, y, z;
+
+    [[nodiscard]] constexpr F operator[](const std::size_t idx) const noexcept {
+	assert(idx == 0 || idx == 1 || idx == 2);
+	[[assume(idx == 0 || idx == 1 || idx == 2)]];
+
+	switch (idx) {
+	    case 0:
+		return x;
+	    case 1:
+		return y;
+	    case 2:
+		return z;
+	    default:
+		std::unreachable();
+	};
+    }
+
+    [[nodiscard]] constexpr F& operator[](const std::size_t idx) noexcept {
+	assert(idx == 0 || idx == 1 || idx == 2);
+	[[assume(idx == 0 || idx == 1 || idx == 2)]];
+
+	switch (idx) {
+	    case 0:
+		return x;
+	    case 1:
+		return y;
+	    case 2:
+		return z;
+	    default:
+		std::unreachable();
+	};
+    }
 
     [[nodiscard]] constexpr vec3<F> operator-() const noexcept {
 	return {-x, -y, -z};
@@ -32,6 +66,8 @@ struct vec3 {
     }
 
     constexpr vec3<F>& operator/=(const F scalar) noexcept {
+	assert(scalar != 0);
+	[[assume(scalar != 0)]];
 	x /= scalar;
 	y /= scalar;
 	z /= scalar;
