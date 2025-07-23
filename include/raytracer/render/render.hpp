@@ -17,7 +17,7 @@
 constexpr double shadow_bias = 1e-5;
 constexpr double reflection_bias = 1e-5;
 constexpr double refraction_bias = 1e-5;
-constexpr int max_ray_depth = 6;
+constexpr int max_ray_depth = 4;
 
 template <typename A, typename F>
 constexpr image<F> render_frame(const A& accel, scheduling_type threading)

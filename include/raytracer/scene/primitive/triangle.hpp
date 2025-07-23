@@ -12,7 +12,7 @@ struct triangle {
     vec3<F> v0, v1, v2;
     std::array<std::size_t, 3> vertex_indices;
     std::size_t mesh_idx;
-    vec3<F> e0, e1, e2;
+    vec3<F> e1, e2;
     vec3<F> normal;
     aabb3<F> box;
     vec3<vec2<F>> uvs;
@@ -21,9 +21,8 @@ struct triangle {
 	: v0(v0), v1(v1), v2(v2), vertex_indices(vertex_indices), mesh_idx(mesh_idx), uvs(uvs) {
 	normal = cross(v1 - v0, v2 - v0).norm();
 
-	e0 = v1 - v0;
-	e1 = v2 - v1;
-	e2 = v0 - v2;
+	e1 = v1 - v0;
+	e2 = v2 - v0;
 	
 	box.expand(v0);
 	box.expand(v1);
@@ -31,29 +30,39 @@ struct triangle {
     }
 
     constexpr std::optional<primitive_hit<F>> intersect(const ray3<F>& ray, const bool backface_culling) const {
-	if(std::abs(dot(ray.direction, normal)) < std::numeric_limits<F>::epsilon())
-	    return std::nullopt;
+	const vec3<F> pvec = cross(ray.direction, e2);
+	const F det = dot(e1, pvec);
 
-	if(backface_culling && dot(ray.direction, normal) > 0)
-	    return std::nullopt;
+	if (backface_culling) {
+	    if (det <= std::numeric_limits<F>::epsilon()) {
+		return std::nullopt;
+	    }
+	} else {
+	    if (std::abs(det) <= std::numeric_limits<F>::epsilon()) {
+		return std::nullopt;
+	    }
+	}
 
-	F dist = dot(normal, v0 - ray.origin);
-	F proj = dot(normal, ray.direction);
-	F hit_distance = dist / proj;
+	const F inv_det = 1. / det;
+	const vec3<F> tvec = ray.origin - v0;
 
-	if(hit_distance < 0)
-	    return std::nullopt;
-
-	vec3<F> hit_position = ray.origin + (ray.direction * hit_distance);
-	if(dot(normal, cross(e0, hit_position - v0)) < 0 ||
-	   dot(normal, cross(e1, hit_position - v1)) < 0 ||
-	   dot(normal, cross(e2, hit_position - v2)) < 0) {
+	const F u = dot(tvec, pvec) * inv_det;
+	if (u < 0. || 1. < u) {
 	    return std::nullopt;
 	}
 
-	F u = cross(v0 - hit_position, v2 - v0).len() / cross(v1 - v0, v2 - v0).len();
-	F v = cross(v1 - v0, hit_position - v0).len() / cross(v1 - v0, v2 - v0).len();
+	const vec3<F> qvec = cross(tvec, e1);
+	const F v = dot(ray.direction, qvec) * inv_det;
+	if (v < 0. || 1. < u + v) {
+	    return std::nullopt;
+	}
 
-	return primitive_hit<F>{ray, hit_position, hit_distance, u, v};
+	const F dist = dot(e2, qvec) * inv_det;
+	if (dist < std::numeric_limits<F>::epsilon()) {
+	    return std::nullopt;
+	}
+
+	vec3<F> hit_position = ray.origin + (dist * ray.direction);
+	return primitive_hit<F>{ray, hit_position, dist, u, v};
     }
 };
