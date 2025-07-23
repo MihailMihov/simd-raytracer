@@ -107,7 +107,7 @@ requires accelerator<A, F> {
 	    return true;
 	}
 
-	ray.origin = hit->position + shadow_bias * ray.direction;
+	ray.origin = hit->position + (static_cast<F>(shadow_bias) * ray.direction);
 	max_t -= hit->distance;
     }
 
@@ -143,12 +143,12 @@ requires accelerator<A, F> {
 
 		F cosine_law;
 		if(m.smooth_shading) {
-		    cosine_law = std::max(0., dot(light_direction, hit_normal));
+		    cosine_law = std::max(static_cast<F>(0.), dot(light_direction, hit_normal));
 		} else {
-		    cosine_law = std::max(0., dot(light_direction, face_normal));
+		    cosine_law = std::max(static_cast<F>(0.), dot(light_direction, face_normal));
 		}
 
-		ray3<F> shadow_ray(hit_position + shadow_bias * light_direction, light_direction);
+		ray3<F> shadow_ray(hit_position + (static_cast<F>(shadow_bias) * light_direction), light_direction);
 		if(is_occluded(accel, shadow_ray, sphere_radius))
 		    continue;
 
@@ -162,8 +162,8 @@ requires accelerator<A, F> {
 
 	    return final_color;
 	} else if constexpr (std::same_as<M, reflective_material<F>>) {
-	    vec3<F> reflection_direction = incoming_ray.direction - hit_normal * dot(incoming_ray.direction, hit_normal) * 2.;
-	    vec3<F> reflection_origin = hit_position + reflection_bias * reflection_direction;
+	    vec3<F> reflection_direction = incoming_ray.direction - (static_cast<F>(2.) * dot(incoming_ray.direction, hit_normal) * hit_normal);
+	    vec3<F> reflection_origin = hit_position + (static_cast<F>(reflection_bias) * reflection_direction);
 	    ray3<F> reflection_ray(reflection_origin, reflection_direction);
 
 	    auto reflection_hit = accel.template trace<false>(reflection_ray);
@@ -187,11 +187,11 @@ requires accelerator<A, F> {
 	    }
 
 	    F cos_i_n = -dot(i, n);
-	    F sin_i_n = std::sqrt(1 - cos_i_n * cos_i_n);
+	    F sin_i_n = std::sqrt(static_cast<F>(1.) - cos_i_n * cos_i_n);
 
 	    if(eta_r / eta_i < sin_i_n) {
-		vec3<F> reflection_direction = i - 2 * dot(i, n) * n;
-		ray3<F> reflection_ray(hit_position + reflection_bias * reflection_direction, reflection_direction);
+		vec3<F> reflection_direction = i - static_cast<F>(2.) * dot(i, n) * n;
+		ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
 		auto reflection_hit = accel.template trace<false>(reflection_ray);
 
 		if(!reflection_hit.has_value())
@@ -205,7 +205,7 @@ requires accelerator<A, F> {
 
 	    vec3<F> r = -n * cos_r_mn + (i + n * cos_i_n).norm() * sin_r_mn;
 
-	    ray3<F> refraction_ray(hit_position + refraction_bias * r, r);
+	    ray3<F> refraction_ray(hit_position + (static_cast<F>(refraction_bias) * r), r);
 	    auto refraction_hit = accel.template trace<false>(refraction_ray);
 
 	    color<F> refraction_color = color<F>{};
@@ -214,7 +214,7 @@ requires accelerator<A, F> {
 	    }
 
 	    vec3<F> reflection_direction = i - 2 * dot(i, n) * n;
-	    ray3<F> reflection_ray(hit_position + reflection_bias * reflection_direction, reflection_direction);
+	    ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
 	    auto reflection_hit = accel.template trace<false>(reflection_ray);
 
 	    color<F> reflection_color = color<F>{};

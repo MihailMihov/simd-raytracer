@@ -91,7 +91,7 @@ struct kd_tree_accel {
     constexpr std::optional<hit_record<F>> trace(const ray3<F>& ray) const {
 	std::optional<hit_record<F>> closest_hit;
 
-	std::stack<std::size_t> nodes_to_check;
+	std::stack<std::size_t, std::vector<std::size_t>> nodes_to_check;
 	nodes_to_check.push(0);
 
 	while (!nodes_to_check.empty()) {

@@ -1,4 +1,3 @@
-#include "raytracer/render/accel/list.hpp"
 #include <filesystem>
 #include <fstream>
 #include <print>
@@ -47,11 +46,11 @@ int main(int argc, char **argv) {
 
     const std::filesystem::path& scene_file_path = argv[1];
 
-    const auto scene = parse_scene_file<double>(scene_file_path);
+    const auto scene = parse_scene_file<float>(scene_file_path);
 
     auto accelerator = kd_tree_accel(std::make_shared<decltype(scene)>(scene));
 
-    render_still<decltype(accelerator), double>(std::move(accelerator));
+    render_still<decltype(accelerator), float>(std::move(accelerator));
 
     return 0;
 }

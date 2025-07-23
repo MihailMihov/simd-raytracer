@@ -7,29 +7,39 @@
 #include <raytracer/scene/scene.hpp>
 
 template <typename F>
+F load_f(simdjson::simdjson_result<simdjson::dom::element>&& result) {
+    return static_cast<F>(static_cast<double>(result));
+}
+
+template <typename F>
+F load_f(simdjson::dom::element&& element) {
+    return static_cast<F>(static_cast<double>(element));
+}
+
+template <typename F>
 vec3<F> load_vec3(simdjson::dom::array&& arr) {
     return vec3<F>{
-	arr.at(0),
-	arr.at(1),
-	arr.at(2)
+	load_f<F>(arr.at(0)),
+	load_f<F>(arr.at(1)),
+	load_f<F>(arr.at(2))
     };
 }
 
 template <typename F>
 mat3<F> load_mat3(simdjson::dom::array&& arr) {
     return mat3<F>{
-	arr.at(0), arr.at(1), arr.at(2),
-	arr.at(3), arr.at(4), arr.at(5),
-	arr.at(6), arr.at(7), arr.at(8)
+	load_f<F>(arr.at(0)), load_f<F>(arr.at(1)), load_f<F>(arr.at(2)),
+	load_f<F>(arr.at(3)), load_f<F>(arr.at(4)), load_f<F>(arr.at(5)),
+	load_f<F>(arr.at(6)), load_f<F>(arr.at(7)), load_f<F>(arr.at(8))
     };
 }
 
 template <typename F>
 color<F> load_color(simdjson::dom::array&& arr) {
     return color<F>{
-	arr.at(0),
-	arr.at(1),
-	arr.at(2)
+	load_f<F>(arr.at(0)),
+	load_f<F>(arr.at(1)),
+	load_f<F>(arr.at(2))
     };
 }
 
@@ -61,7 +71,7 @@ template <typename F>
 light<F> load_light(simdjson::dom::object&& obj) {
     return light<F>{
 	load_vec3<F>(obj["position"]),
-	obj["intensity"]
+	load_f<F>(obj["intensity"])
     };
 }
 
@@ -77,13 +87,13 @@ texture_variant<F> load_texture(simdjson::dom::object&& obj) {
 	return edge_texture<F>{
 	    load_color<F>(obj["edge_color"]),
 	    load_color<F>(obj["inner_color"]),
-	    obj["edge_width"]
+	    load_f<F>(obj["edge_width"])
 	};
     } else if(type == "checker") {
 	return checker_texture<F>{
 	    load_color<F>(obj["color_A"]),
 	    load_color<F>(obj["color_B"]),
-	    obj["square_size"]
+	    load_f<F>(obj["square_size"])
 	};
     } else if(type == "bitmap") {
 	std::string_view file_path = obj["file_path"];
@@ -123,7 +133,7 @@ material_variant<F> load_material(simdjson::dom::object&& obj) {
 	};
     } else if(type == "refractive") {
 	return refractive_material<F>{
-	    obj["ior"],
+	    load_f<F>(obj["ior"]),
 	    obj["smooth_shading"]
 	};
     } else if(type == "constant") {
@@ -142,11 +152,11 @@ mesh_object<F> load_mesh(simdjson::dom::object&& obj, std::size_t object_idx) {
 
     std::vector<vec3<F>> vertices;
     std::vector<F> vertex_buffer;
-    for(auto vertex : obj["vertices"]) {
-	vertex_buffer.emplace_back(vertex);
+    for(auto vertex_component : obj["vertices"]) {
+	vertex_buffer.push_back(load_f<F>(std::move(vertex_component)));
 
 	if(vertex_buffer.size() == 3) {
-	    vertices.emplace_back(vec3<F>{
+	    vertices.push_back(vec3<F>{
 		vertex_buffer[0],
 		vertex_buffer[1],
 		vertex_buffer[2]
@@ -163,11 +173,11 @@ mesh_object<F> load_mesh(simdjson::dom::object&& obj, std::size_t object_idx) {
     std::vector<vec2<F>> uvs;
     if(auto uv_array = obj["uvs"].get_array(); !uv_array.error()) {
 	std::vector<F> uv_buffer;
-	for(auto uv : uv_array) {
-	    uv_buffer.emplace_back(uv);
+	for(auto uv_component : uv_array) {
+	    uv_buffer.push_back(load_f<F>(std::move(uv_component)));
 
 	    if(uv_buffer.size() == 3) {
-		uvs.emplace_back(vec2<F>{
+		uvs.push_back(vec2<F>{
 		    uv_buffer[0],
 		    uv_buffer[1]
 		});

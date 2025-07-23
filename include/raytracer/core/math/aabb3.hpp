@@ -16,10 +16,6 @@ struct aabb3 {
 	min(std::numeric_limits<F>::max(), std::numeric_limits<F>::max(), std::numeric_limits<F>::max()),
 	max(std::numeric_limits<F>::min(), std::numeric_limits<F>::min(), std::numeric_limits<F>::min()) {}
 
-    constexpr aabb3(const aabb3<F> &other) :
-	min(other.min),
-	max(other.max) {}
-
     constexpr void expand(const vec3<F>& point) {
 	min = { std::min(min.x, point.x), std::min(min.y, point.y), std::min(min.z, point.z) };
 	max = { std::max(max.x, point.x), std::max(max.y, point.y), std::max(max.z, point.z) };

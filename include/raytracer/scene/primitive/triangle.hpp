@@ -44,17 +44,17 @@ struct triangle {
 	    }
 	}
 
-	const F inv_det = 1. / det;
+	const F inv_det = static_cast<F>(1.) / det;
 	const vec3<F> tvec = ray.origin - v0;
 
 	const F u = dot(tvec, pvec) * inv_det;
-	if (u < 0. || 1. < u) {
+	if (u < static_cast<F>(0.) || static_cast<F>(1.) < u) {
 	    return std::nullopt;
 	}
 
 	const vec3<F> qvec = cross(tvec, e1);
 	const F v = dot(ray.direction, qvec) * inv_det;
-	if (v < 0. || 1. < u + v) {
+	if (v < static_cast<F>(0.) || static_cast<F>(1.) < u + v) {
 	    return std::nullopt;
 	}
 
