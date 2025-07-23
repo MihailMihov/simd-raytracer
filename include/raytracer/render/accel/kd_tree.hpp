@@ -87,7 +87,7 @@ struct kd_tree_accel {
 	nodes_to_check.push(0);
 
 	while (!nodes_to_check.empty()) {
-	    auto node_idx = nodes_to_check.top();
+	    const auto node_idx = nodes_to_check.top();
 	    nodes_to_check.pop();
 
 	    const auto& node = tree[node_idx];
@@ -111,10 +111,11 @@ struct kd_tree_accel {
 		    if (maybe_hit && (!closest_hit || maybe_hit->distance < closest_hit->distance)) {
 			const auto& mesh = scene_ptr->meshes[triangle.mesh_idx];
 
-			const vec3<F>& v0_normal = mesh.vertex_normals[triangle.vertex_indices[0]];
-			const vec3<F>& v1_normal = mesh.vertex_normals[triangle.vertex_indices[1]];
-			const vec3<F>& v2_normal = mesh.vertex_normals[triangle.vertex_indices[2]];
-			vec3<F> hit_normal = maybe_hit->u * v1_normal + maybe_hit->v * v2_normal + (static_cast<F>(1.) - maybe_hit->u - maybe_hit->v) * v0_normal;
+			const auto& v0_normal = mesh.vertex_normals[triangle.vertex_indices[0]];
+			const auto& v1_normal = mesh.vertex_normals[triangle.vertex_indices[1]];
+			const auto& v2_normal = mesh.vertex_normals[triangle.vertex_indices[2]];
+
+			const vec3<F> hit_normal = maybe_hit->u * v1_normal + maybe_hit->v * v2_normal + maybe_hit->w * v0_normal;
 
 			closest_hit = hit_record<F>{
 			    maybe_hit->ray,
@@ -125,6 +126,7 @@ struct kd_tree_accel {
 			    maybe_hit->distance,
 			    maybe_hit->u,
 			    maybe_hit->v,
+			    maybe_hit->w,
 			    static_cast<std::size_t>(triangle.mesh_idx),
 			};
 		    }

@@ -4,7 +4,7 @@
 
 #include <raytracer/core/math/vec3.hpp>
 
-template<typename F>
+template <typename F>
 struct mat3 {
     std::array<F, 9> m;
 
@@ -16,6 +16,15 @@ struct mat3 {
 	return m[row * 3 + column];
     }
 };
+
+template <typename F>
+mat3<F> transpose(const mat3<F>& m) noexcept {
+    return {
+	m[0, 0], m[1, 0], m[2, 0],
+	m[0, 1], m[1, 1], m[2, 1],
+	m[0, 2], m[1, 2], m[2, 2]
+    };
+}
 
 template <typename F>
 mat3<F> operator*(const mat3<F>& lhs, const mat3<F>& rhs) {
@@ -37,6 +46,6 @@ vec3<F> operator*(const mat3<F>& lhs, const vec3<F>& rhs) {
     return {
 	lhs[0, 0] * rhs.x + lhs[0, 1] * rhs.y + lhs[0, 2] * rhs.z,
 	lhs[1, 0] * rhs.x + lhs[1, 1] * rhs.y + lhs[1, 2] * rhs.z,
-	lhs[2, 0] * rhs.x + lhs[2, 1] * rhs.y + lhs[2, 2] * rhs.z,
+	lhs[2, 0] * rhs.x + lhs[2, 1] * rhs.y + lhs[2, 2] * rhs.z
     };
 }

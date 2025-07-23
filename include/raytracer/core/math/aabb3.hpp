@@ -66,38 +66,17 @@ struct aabb3 {
     }
 
     [[nodiscard]] constexpr bool intersect(const ray3<F>& ray) const noexcept {
-	F tmin = (min[0] - ray.origin[0]) / ray.direction[0];
-	F tmax = (max[0] - ray.origin[0]) / ray.direction[0];
-	if(tmax < tmin) {
-	    std::swap(tmin, tmax);
+	F t_min = static_cast<F>(0.);
+	F t_max = std::numeric_limits<F>::max();
+
+	for (std::size_t axis = 0; axis < 3; ++axis) {
+	    const F t1 = (min[axis] - ray.origin[axis]) * ray.inv_direction[axis];
+	    const F t2 = (max[axis] - ray.origin[axis]) * ray.inv_direction[axis];
+
+	    t_min = std::min(std::max(t1, t_min), std::max(t2, t_min));
+	    t_max = std::max(std::min(t1, t_max), std::min(t2, t_max));
 	}
 
-	F tymin = (min[1] - ray.origin[1]) / ray.direction[1];
-	F tymax = (max[1] - ray.origin[1]) / ray.direction[1];
-	if(tymax < tymin) {
-	    std::swap(tymin, tymax);
-	}
-
-	if((tymax < tmin) || (tmax < tymin)) {
-	    return false;
-	}
-
-	tmin = std::max(tmin, tymin);
-	tmax = std::min(tmax, tymax);
-
-	F tzmin = (min[2] - ray.origin[2]) / ray.direction[2];
-	F tzmax = (max[2] - ray.origin[2]) / ray.direction[2];
-	if(tzmax < tzmin) {
-	    std::swap(tzmin, tzmax);
-	}
-
-	if((tzmax < tmin) || (tmax < tzmin)) {
-	    return false;
-	}
-
-	tmin = std::max(tmin, tzmin);
-	tmax = std::min(tmax, tzmax);
-
-	return true;
+	return t_min <= t_max;
     }
 };

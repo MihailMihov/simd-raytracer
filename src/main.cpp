@@ -31,14 +31,19 @@ requires accelerator<A, F> {
 template <typename A, typename F>
 void render_still(A&& accel)
 requires accelerator<A, F> {
+    auto render_start = std::chrono::high_resolution_clock::now();
     auto image = render_frame<A, F>(accel, scheduling_type::BUCKET_TILES);
+    auto render_end = std::chrono::high_resolution_clock::now();
+
+    auto duration = duration_cast<std::chrono::milliseconds>(render_end - render_start);
+    std::println("Rendering took {} milliseconds.", duration.count() / 1'000.);
 
     std::ofstream output_file_stream("image.ppm", std::ios::out | std::ios::binary);
     write_ppm(image, output_file_stream);
 }
 
 int main(int argc, char **argv) {
-    if(argc != 2) {
+    if (argc != 2) {
 	std::println("Usage: ./raytracer FILE");
 
 	return 1;

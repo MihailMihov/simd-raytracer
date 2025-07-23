@@ -9,4 +9,5 @@ struct primitive_hit {
     F distance;
     F u;
     F v;
+    F w;
 };

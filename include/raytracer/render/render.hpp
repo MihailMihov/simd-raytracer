@@ -40,12 +40,13 @@ requires accelerator<A, F> {
 		const F ndc_x = raster_x / image_width;
 		const F ndc_y = raster_y / image_height;
 
-		const F screen_x = ((static_cast<F>(2.) * ndc_x) - static_cast<F>(1.) * aspect_ratio);
-		const F screen_y = static_cast<F>(1.) - (static_cast<F>(2.) * ndc_y);
+		F screen_x = (static_cast<F>(2.) * ndc_x) - static_cast<F>(1.);
+		F screen_y = static_cast<F>(1.) - (static_cast<F>(2.) * ndc_y);
+
+		screen_x *= aspect_ratio;
 
 		vec3<F> direction{screen_x, screen_y, static_cast<F>(-1.)};
-		direction = camera.matrix * direction;
-		direction.normalize();
+		direction = norm(transpose(camera.matrix) * direction);
 
 		ray3<F> ray(camera.position, direction);
 
@@ -122,7 +123,7 @@ requires accelerator<A, F> {
     if(ray_depth == max_ray_depth)
 	return scene.config.background_color;
 
-    auto [incoming_ray, hit_position, hit_normal, face_normal, uvs, hit_distance, u, v, mesh_idx] = hit_record;
+    auto [incoming_ray, hit_position, hit_normal, face_normal, uvs, hit_distance, u, v, w, mesh_idx] = hit_record;
 
     const auto& object = scene.meshes[mesh_idx];
     const auto& material = scene.materials[object.material_idx];

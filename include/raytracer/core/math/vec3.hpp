@@ -104,6 +104,11 @@ template <typename F>
 }
 
 template <typename F>
+[[nodiscard]] constexpr vec3<F> operator/(const F lhs, const vec3<F>& rhs) noexcept {
+    return {lhs / rhs.x, lhs / rhs.y, lhs / rhs.z};
+}
+
+template <typename F>
 [[nodiscard]] constexpr vec3<F> norm(const vec3<F>& v) {
     const F inv_length = static_cast<F>(1.) / v.len();
     return {v.x * inv_length, v.y * inv_length, v.z * inv_length};

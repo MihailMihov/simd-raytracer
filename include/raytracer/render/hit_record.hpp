@@ -16,5 +16,6 @@ struct hit_record {
     F distance;
     F u;
     F v;
+    F w;
     std::size_t object_idx;
 };
