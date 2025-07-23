@@ -29,11 +29,12 @@ struct triangle {
 	box.expand(v2);
     }
 
-    constexpr std::optional<primitive_hit<F>> intersect(const ray3<F>& ray, const bool backface_culling) const {
+    template <bool backface_culling>
+    constexpr std::optional<primitive_hit<F>> intersect(const ray3<F>& ray) const {
 	const vec3<F> pvec = cross(ray.direction, e2);
 	const F det = dot(e1, pvec);
 
-	if (backface_culling) {
+	if constexpr (backface_culling) {
 	    if (det <= std::numeric_limits<F>::epsilon()) {
 		return std::nullopt;
 	    }

@@ -6,6 +6,8 @@
 #include "raytracer/render/hit_record.hpp"
 
 template <typename A, typename F>
-concept accelerator = requires(A accel, const ray3<F>& ray, const bool backface_culling) {
-    { accel.trace(ray, backface_culling) } -> std::same_as<std::optional<hit_record<F>>>;
+concept accelerator = requires(A accel, const ray3<F>& ray) {
+    { accel };
+    // { accel.trace<true>(ray) } -> std::same_as<std::optional<hit_record<F>>>;
+    // { accel.trace<false>(ray) } -> std::same_as<std::optional<hit_record<F>>>;
 };

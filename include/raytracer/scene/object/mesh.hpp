@@ -43,44 +43,23 @@ struct mesh_object {
 	}
     }
 
-    constexpr std::optional<object_hit<F>> intersect(const ray3<F>& ray, const bool backface_culling) const {
+    template <bool backface_culling>
+    constexpr std::optional<object_hit<F>> intersect(const ray3<F>& ray) const {
 	std::optional<object_hit<F>> closest_hit;
 
 	for(const auto& [triangle_idx, triangle] : triangles | std::ranges::views::enumerate) {
-	    vec3<F> triangle_normal = triangle_normals[triangle_idx];
+	    auto maybe_hit = triangle.template intersect<backface_culling>(ray);
 
-	    if(std::abs(dot(ray.direction, triangle_normal)) < std::numeric_limits<F>::epsilon())
-		continue;
-
-	    if(backface_culling && dot(ray.direction, triangle_normal) > 0)
-		continue;
-
-	    F dist = dot(triangle_normal, triangle.v0 - ray.origin);
-	    F proj = dot(triangle_normal, ray.direction);
-	    F hit_distance = dist / proj;
-
-	    if(hit_distance < 0)
-		continue;
-
-	    if(closest_hit.has_value() && closest_hit.value().distance < hit_distance)
-		continue;
-
-	    vec3<F> hit_position = ray.origin + (ray.direction * hit_distance);
-
-	    if(dot(triangle_normal, cross(triangle.e0, hit_position - triangle.v0)) < 0 ||
-	       dot(triangle_normal, cross(triangle.e1, hit_position - triangle.v1)) < 0 ||
-	       dot(triangle_normal, cross(triangle.e2, hit_position - triangle.v2)) < 0) {
+	    if (!maybe_hit) {
 		continue;
 	    }
 
-	    if(!closest_hit.has_value() || hit_distance < closest_hit.value().distance) {
-		F u = cross(triangle.v0 - hit_position, triangle.v2 - triangle.v0).len() / cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0).len();
-		F v = cross(triangle.v1 - triangle.v0, hit_position - triangle.v0).len() / cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0).len();
+	    if(!closest_hit.has_value() || maybe_hit->distance < closest_hit.value().distance) {
 		vec3<F> v0_normal = vertex_normals[triangle.vertex_indices[0]];
 		vec3<F> v1_normal = vertex_normals[triangle.vertex_indices[1]];
 		vec3<F> v2_normal = vertex_normals[triangle.vertex_indices[2]];
-		vec3<F> hit_normal = v1_normal * u + v2_normal * v + v0_normal * (1 - u - v);
-		closest_hit = object_hit<F>(ray, hit_position, hit_normal, triangle.normal, triangle.uvs, hit_distance, u, v, triangle_idx);
+		vec3<F> hit_normal = v1_normal * maybe_hit->u + v2_normal * maybe_hit->v + v0_normal * (1 - maybe_hit->u - maybe_hit->v);
+		closest_hit = object_hit<F>(ray, maybe_hit->position, hit_normal, triangle.normal, triangle.uvs, maybe_hit->distance, maybe_hit->u, maybe_hit->v, triangle_idx);
 	    }
 	}
 
