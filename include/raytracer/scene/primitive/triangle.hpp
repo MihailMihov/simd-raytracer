@@ -10,10 +10,10 @@
 template <typename F>
 struct triangle {
     vec3<F> v0, v1, v2;
-    std::array<std::size_t, 3> vertex_indices;
-    std::size_t mesh_idx;
     vec3<F> e1, e2;
     vec3<F> normal;
+    std::array<std::size_t, 3> vertex_indices;
+    std::size_t mesh_idx;
     aabb3<F> box;
     vec3<vec2<F>> uvs;
 
