@@ -59,7 +59,7 @@ struct triangle {
 	}
 
 	const F dist = dot(e2, qvec) * inv_det;
-	if (dist < static_cast<F>(0.)) {
+	if (dist < std::numeric_limits<F>::epsilon()) {
 	    return std::nullopt;
 	}
 

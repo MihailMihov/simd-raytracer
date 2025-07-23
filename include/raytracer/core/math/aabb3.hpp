@@ -79,4 +79,22 @@ struct aabb3 {
 
 	return t_min <= t_max;
     }
+
+    [[nodiscard]] constexpr std::optional<F> intersect(const ray3<F>& ray, F t_max) const noexcept {
+	F t_min = static_cast<F>(0.);
+
+	for (std::size_t axis = 0; axis < 3; ++axis) {
+	    const F t1 = (min[axis] - ray.origin[axis]) * ray.inv_direction[axis];
+	    const F t2 = (max[axis] - ray.origin[axis]) * ray.inv_direction[axis];
+
+	    t_min = std::min(std::max(t1, t_min), std::max(t2, t_min));
+	    t_max = std::max(std::min(t1, t_max), std::min(t2, t_max));
+	}
+
+	if (t_min <= t_max) {
+	    return t_min;
+	}
+
+	return std::nullopt;
+    }
 };

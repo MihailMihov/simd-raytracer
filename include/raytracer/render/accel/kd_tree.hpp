@@ -17,12 +17,14 @@ struct kd_tree_accel {
 	int32_t parent;
 	int32_t child0;
 	int32_t child1;
-	std::vector<std::size_t> triangle_indices;
+	int32_t start_idx;
+	std::size_t count;
     };
 
     std::shared_ptr<const scene<F>> scene_ptr;
     std::vector<triangle<F>> triangles;
     std::vector<kd_tree_node> tree;
+    std::vector<std::size_t> leaf_indices;
 
     kd_tree_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
 	aabb3<F> root_box;
@@ -37,21 +39,26 @@ struct kd_tree_accel {
 	    }
 	}
 
-	kd_tree_node root{root_box, -1, -1, -1, {}};
-	tree.push_back(root);
+	tree.emplace_back(root_box, -1, -1, -1, -1, 0);
 	build_tree(0, 0, triangle_indices);
     }
 
     constexpr void build_tree(const int32_t parent_idx, const std::size_t depth, const std::vector<std::size_t>& triangle_indices) {
 	if (depth == max_depth || triangle_indices.size() <= max_primitive_count) {
-	    tree[parent_idx].triangle_indices = triangle_indices;
+	    tree[parent_idx].start_idx = leaf_indices.size();
+	    leaf_indices.insert(leaf_indices.end(), triangle_indices.begin(), triangle_indices.end());
+	    tree[parent_idx].count = leaf_indices.size() - tree[parent_idx].start_idx;
 	    return;
 	}
 
 	auto [aabb0, aabb1] = tree[parent_idx].box.split(depth % 3);
 
 	std::vector<std::size_t> child0_triangle_indices;
+	child0_triangle_indices.reserve(triangle_indices.size());
+
 	std::vector<std::size_t> child1_triangle_indices;
+	child1_triangle_indices.reserve(triangle_indices.size());
+
 	for (const auto& triangle_idx : triangle_indices) {
 	    const auto& triangle = triangles[triangle_idx];
 
@@ -66,14 +73,14 @@ struct kd_tree_accel {
 
 	if (!child0_triangle_indices.empty()) {
 	    std::size_t child0_idx = tree.size();
-	    tree.push_back(kd_tree_node{aabb0, parent_idx, -1, -1, {}});
+	    tree.emplace_back(aabb0, parent_idx, -1, -1, -1, 0);
 	    tree[parent_idx].child0 = child0_idx;
 	    build_tree(child0_idx, depth + 1, child0_triangle_indices);
 	}
 
 	if (!child1_triangle_indices.empty()) {
 	    std::size_t child1_idx = tree.size();
-	    tree.push_back(kd_tree_node{aabb1, parent_idx, -1, -1, {}});
+	    tree.emplace_back(aabb1, parent_idx, -1, -1, -1, 0);
 	    tree[parent_idx].child1 = child1_idx;
 	    build_tree(child1_idx, depth + 1, child1_triangle_indices);
 	}
@@ -91,11 +98,17 @@ struct kd_tree_accel {
 	    nodes_to_check.pop();
 
 	    const auto& node = tree[node_idx];
-	    if (!node.box.intersect(ray)) {
+
+	    const F best_t = closest_hit
+		.transform([](const auto& hit) { return hit.distance; })
+		.value_or(std::numeric_limits<F>::max());
+
+	    auto maybe_box_hit = node.box.intersect(ray, best_t);
+	    if (!maybe_box_hit || best_t <= maybe_box_hit.value()) {
 		continue;
 	    }
 
-	    if (node.triangle_indices.empty()) {
+	    if (node.start_idx == -1) {
 		if (node.child0 != -1) {
 		    nodes_to_check.push(node.child0);
 		}
@@ -104,8 +117,9 @@ struct kd_tree_accel {
 		    nodes_to_check.push(node.child1);
 		}
 	    } else {
-		for (const auto triangle_idx : node.triangle_indices) {
-		    const auto& triangle = triangles[triangle_idx];
+		for (std::size_t triangle_idx = node.start_idx; triangle_idx < node.start_idx + node.count; ++triangle_idx) {
+		    const auto& triangle = triangles[leaf_indices[triangle_idx]];
+
 		    const auto maybe_hit = triangle.template intersect<backface_culling>(ray);
 
 		    if (maybe_hit && (!closest_hit || maybe_hit->distance < closest_hit->distance)) {

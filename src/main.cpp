@@ -36,7 +36,7 @@ requires accelerator<A, F> {
     auto render_end = std::chrono::high_resolution_clock::now();
 
     auto duration = duration_cast<std::chrono::milliseconds>(render_end - render_start);
-    std::println("Rendering took {} milliseconds.", duration.count() / 1'000.);
+    std::println("Rendering took {} seconds.", duration.count() / 1'000.);
 
     std::ofstream output_file_stream("image.ppm", std::ios::out | std::ios::binary);
     write_ppm(image, output_file_stream);
