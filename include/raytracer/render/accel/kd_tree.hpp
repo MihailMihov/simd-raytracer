@@ -7,8 +7,8 @@
 #include <raytracer/core/math/aabb3.hpp>
 #include <raytracer/scene/scene.hpp>
 
-constexpr std::size_t max_depth = 16;
-constexpr std::size_t max_primitive_count = 4;
+constexpr std::size_t max_depth = 8;
+constexpr std::size_t max_primitive_count = 16;
 
 template <typename F>
 struct kd_tree_accel {
@@ -23,31 +23,23 @@ struct kd_tree_accel {
     std::shared_ptr<const scene<F>> scene_ptr;
     std::vector<triangle<F>> triangles;
     std::vector<kd_tree_node> tree;
-    std::size_t triangle_limit;
 
     kd_tree_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
 	aabb3<F> root_box;
 	std::vector<std::size_t> triangle_indices;
 	for (const auto& mesh : this->scene_ptr->meshes) {
 	    root_box.unite(mesh.box);
-	    const auto& mesh_triangles = mesh.triangles;
 
 	    std::size_t start_idx = triangles.size();
-	    triangles.insert(triangles.end(), mesh_triangles.begin(), mesh_triangles.end());
-	    for (std::size_t i = 0; i < mesh_triangles.size(); ++i) {
+	    triangles.insert(triangles.end(), mesh.triangles.begin(), mesh.triangles.end());
+	    for (std::size_t i = 0; i < mesh.triangles.size(); ++i) {
 		triangle_indices.push_back(start_idx + i);
 	    }
 	}
 
-	triangle_limit = triangle_indices.size();
-
 	kd_tree_node root{root_box, -1, -1, -1, {}};
 	tree.push_back(root);
 	build_tree(0, 0, triangle_indices);
-    }
-
-    constexpr void set_triangle_limit(const std::size_t new_triangle_limit) noexcept {
-	triangle_limit = new_triangle_limit;
     }
 
     constexpr void build_tree(const int32_t parent_idx, const std::size_t depth, const std::vector<std::size_t>& triangle_indices) {
@@ -112,13 +104,9 @@ struct kd_tree_accel {
 		    nodes_to_check.push(node.child1);
 		}
 	    } else {
-		for (const auto& triangle_idx : node.triangle_indices) {
-		    if (triangle_limit < triangle_idx) {
-			continue;
-		    }
-
+		for (const auto triangle_idx : node.triangle_indices) {
 		    const auto& triangle = triangles[triangle_idx];
-		    const auto& maybe_hit = triangle.template intersect<backface_culling>(ray);
+		    const auto maybe_hit = triangle.template intersect<backface_culling>(ray);
 
 		    if (maybe_hit && (!closest_hit || maybe_hit->distance < closest_hit->distance)) {
 			const auto& mesh = scene_ptr->meshes[triangle.mesh_idx];
@@ -126,7 +114,7 @@ struct kd_tree_accel {
 			const vec3<F>& v0_normal = mesh.vertex_normals[triangle.vertex_indices[0]];
 			const vec3<F>& v1_normal = mesh.vertex_normals[triangle.vertex_indices[1]];
 			const vec3<F>& v2_normal = mesh.vertex_normals[triangle.vertex_indices[2]];
-			vec3<F> hit_normal = v1_normal * maybe_hit->u + v2_normal * maybe_hit->v + v0_normal * (1 - maybe_hit->u - maybe_hit->v);
+			vec3<F> hit_normal = maybe_hit->u * v1_normal + maybe_hit->v * v2_normal + (static_cast<F>(1.) - maybe_hit->u - maybe_hit->v) * v0_normal;
 
 			closest_hit = hit_record<F>{
 			    maybe_hit->ray,

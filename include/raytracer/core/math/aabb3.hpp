@@ -16,23 +16,23 @@ struct aabb3 {
 	min(std::numeric_limits<F>::max(), std::numeric_limits<F>::max(), std::numeric_limits<F>::max()),
 	max(std::numeric_limits<F>::min(), std::numeric_limits<F>::min(), std::numeric_limits<F>::min()) {}
 
-    constexpr void expand(const vec3<F>& point) {
+    constexpr void expand(const vec3<F>& point) noexcept {
 	min = { std::min(min.x, point.x), std::min(min.y, point.y), std::min(min.z, point.z) };
 	max = { std::max(max.x, point.x), std::max(max.y, point.y), std::max(max.z, point.z) };
     }
 
-    constexpr void unite(const aabb3<F>& other) {
+    constexpr void unite(const aabb3<F>& other) noexcept {
 	min = { std::min(min.x, other.min.x), std::min(min.y, other.min.y), std::min(min.z, other.min.z) };
 	max = { std::max(max.x, other.max.x), std::max(max.y, other.max.y), std::max(max.z, other.max.z) };
     }
 
-    [[nodiscard]] constexpr std::pair<aabb3<F>, aabb3<F>> split(uint32_t axis) const {
+    [[nodiscard]] constexpr std::pair<aabb3<F>, aabb3<F>> split(const uint32_t axis) const noexcept {
 	if (axis == 0) {
 	    if (min.x == max.x) {
 		return split(1);
 	    }
 
-	    F mid = min.x + ((max.x - min.x) / 2.);
+	    const F mid = min.x + ((max.x - min.x) / 2.);
 
 	    aabb3<F> aabb0(*this);
 	    aabb3<F> aabb1(*this);
@@ -46,7 +46,7 @@ struct aabb3 {
 		return split(2);
 	    }
 
-	    F mid = min.y + ((max.y - min.y) / 2.);
+	    const F mid = min.y + ((max.y - min.y) / 2.);
 
 	    aabb3<F> aabb0(*this);
 	    aabb3<F> aabb1(*this);
@@ -60,7 +60,7 @@ struct aabb3 {
 		return split(0);
 	    }
 
-	    F mid = min.z + ((max.z - min.z) / 2.);
+	    const F mid = min.z + ((max.z - min.z) / 2.);
 
 	    aabb3<F> aabb0(*this);
 	    aabb3<F> aabb1(*this);
@@ -72,19 +72,19 @@ struct aabb3 {
 	}
     }
 
-    [[nodiscard]] constexpr bool contains(const vec3<F>& point) const {
+    [[nodiscard]] constexpr bool contains(const vec3<F>& point) const noexcept {
 	return (min.x <= point.x && point.x <= max.x) ||
 	       (min.y <= point.y && point.y <= max.y) ||
 	       (min.z <= point.z && point.z <= max.z);
     }
 
-    [[nodiscard]] constexpr bool intersect(const aabb3<F>& other) const {
+    [[nodiscard]] constexpr bool intersect(const aabb3<F>& other) const noexcept {
 	return (other.min.x < max.x && min.x <= other.max.x) &&
 	       (other.min.y < max.y && min.y <= other.max.y) &&
 	       (other.min.z < max.z && min.z <= other.max.z);
     }
 
-    [[nodiscard]] constexpr bool intersect(const ray3<F>& ray) const {
+    [[nodiscard]] constexpr bool intersect(const ray3<F>& ray) const noexcept {
 	F tmin = (min.x - ray.origin.x) / ray.direction.x;
 	F tmax = (max.x - ray.origin.x) / ray.direction.x;
 	if(tmax < tmin) {

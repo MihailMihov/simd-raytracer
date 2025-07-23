@@ -17,7 +17,7 @@ struct mat3 {
     }
 };
 
-template<typename F>
+template <typename F>
 mat3<F> operator*(const mat3<F>& lhs, const mat3<F>& rhs) {
     mat3<F> res{};
 
@@ -32,11 +32,11 @@ mat3<F> operator*(const mat3<F>& lhs, const mat3<F>& rhs) {
     return res;
 }
 
-template<typename F>
-vec3<F> operator*(const vec3<F>& lhs, const mat3<F>& rhs) {
-    return vec3<F>{
-	lhs.x * rhs[0, 0] + lhs.y * rhs[1, 0] + lhs.z * rhs[2, 0],
-	lhs.x * rhs[0, 1] + lhs.y * rhs[1, 1] + lhs.z * rhs[2, 1],
-	lhs.x * rhs[0, 2] + lhs.y * rhs[1, 2] + lhs.z * rhs[2, 2],
+template <typename F>
+vec3<F> operator*(const mat3<F>& lhs, const vec3<F>& rhs) {
+    return {
+	lhs[0, 0] * rhs.x + lhs[0, 1] * rhs.y + lhs[0, 2] * rhs.z,
+	lhs[1, 0] * rhs.x + lhs[1, 1] * rhs.y + lhs[1, 2] * rhs.z,
+	lhs[2, 0] * rhs.x + lhs[2, 1] * rhs.y + lhs[2, 2] * rhs.z,
     };
 }

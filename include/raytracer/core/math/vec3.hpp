@@ -6,75 +6,83 @@ template <typename F>
 struct vec3 {
     F x, y, z;
 
-    constexpr vec3<F> operator-() const {
-	return vec3<F>{-x, -y, -z};
+    [[nodiscard]] constexpr vec3<F> operator-() const noexcept {
+	return {-x, -y, -z};
     }
 
-    constexpr vec3<F>& operator+=(const vec3<F>& other) {
+    constexpr vec3<F>& operator+=(const vec3<F>& other) noexcept {
 	x += other.x;
 	y += other.y;
 	z += other.z;
-
 	return *this;
     }
 
-    constexpr vec3<F>& operator-=(const vec3<F>& other) {
+    constexpr vec3<F>& operator-=(const vec3<F>& other) noexcept {
 	x -= other.x;
 	y -= other.y;
 	z -= other.z;
-
 	return *this;
     }
 
-    constexpr vec3<F> operator+(const vec3<F>& rhs) const {
+    constexpr vec3<F>& operator*=(const F scalar) noexcept {
+	x *= scalar;
+	y *= scalar;
+	z *= scalar;
+	return *this;
+    }
+
+    constexpr vec3<F>& operator/=(const F scalar) noexcept {
+	x /= scalar;
+	y /= scalar;
+	z /= scalar;
+	return *this;
+    }
+
+    [[nodiscard]] constexpr vec3<F> operator+(const vec3<F>& rhs) const noexcept {
 	return {x + rhs.x, y + rhs.y, z + rhs.z};
     }
 
-    constexpr vec3<F> operator-(const vec3<F>& rhs) const {
+    [[nodiscard]] constexpr vec3<F> operator-(const vec3<F>& rhs) const noexcept {
 	return {x - rhs.x, y - rhs.y, z - rhs.z};
     }
 
-    constexpr F len_squared() const {
+    [[nodiscard]] constexpr F len_squared() const noexcept {
 	return x * x + y * y + z * z;
     }
 
-    constexpr F len() const {
+    [[nodiscard]] constexpr F len() const noexcept {
 	return std::sqrt(len_squared());
     }
 
-    constexpr vec3<F> norm() const {
-	return vec3<F>{x / len(), y / len(), z / len()};
+    constexpr void normalize() {
+	const F inv_length = static_cast<F>(1.) / len();
+	x *= inv_length;
+	y *= inv_length;
+	z *= inv_length;
     }
 };
 
 template <typename F>
-constexpr vec3<F> operator*(const F& lhs, const vec3<F>& rhs) {
-    return {
-	lhs * rhs.x,
-	lhs * rhs.y,
-	lhs * rhs.z
-    };
+[[nodiscard]] constexpr vec3<F> operator*(const F lhs, const vec3<F>& rhs) noexcept {
+    return {lhs * rhs.x, lhs * rhs.y, lhs * rhs.z};
 }
 
 template <typename F>
-constexpr vec3<F> operator*(const vec3<F>& lhs, const F& rhs) {
-    return {
-	lhs.x * rhs,
-	lhs.y * rhs,
-	lhs.z * rhs
-    };
+[[nodiscard]] constexpr vec3<F> norm(const vec3<F>& v) {
+    const F inv_length = static_cast<F>(1.) / v.len();
+    return {v.x * inv_length, v.y * inv_length, v.z * inv_length};
 }
 
 template <typename F>
-constexpr vec3<F> cross(const vec3<F>& lhs, const vec3<F>& rhs) {
+[[nodiscard]] constexpr F dot(const vec3<F>& lhs, const vec3<F>& rhs) noexcept {
+    return (lhs.x * rhs.x) + (lhs.y * rhs.y) + (lhs.z * rhs.z);
+}
+
+template <typename F>
+[[nodiscard]] constexpr vec3<F> cross(const vec3<F>& lhs, const vec3<F>& rhs) noexcept {
     return {
 	lhs.y * rhs.z - lhs.z * rhs.y,
 	lhs.z * rhs.x - lhs.x * rhs.z,
 	lhs.x * rhs.y - lhs.y * rhs.x
     };
-}
-
-template <typename F>
-constexpr F dot(const vec3<F>& lhs, const vec3<F>& rhs) {
-    return (lhs.x * rhs.x) + (lhs.y * rhs.y) + (lhs.z * rhs.z);
 }

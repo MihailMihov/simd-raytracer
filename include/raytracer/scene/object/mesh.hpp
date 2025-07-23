@@ -31,7 +31,8 @@ struct mesh_object {
 	    box.expand(triangle.v1);
 	    box.expand(triangle.v2);
 
-	    triangle_normals[idx] = cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0).norm();
+	    triangle_normals[idx] = cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0);
+	    triangle_normals[idx].normalize();
 
 	    vertex_normals[v0_idx] += triangle_normals[idx];
 	    vertex_normals[v1_idx] += triangle_normals[idx];
@@ -39,7 +40,7 @@ struct mesh_object {
 	}
 
 	for(auto& vn : vertex_normals) {
-	    vn = vn.norm();
+	    vn.normalize();
 	}
     }
 

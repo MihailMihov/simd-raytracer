@@ -34,22 +34,22 @@ requires accelerator<A, F> {
     auto tile_worker = [&](render_tile tile) {
 	for(std::size_t y = tile.y0; y < tile.y1; ++y) {
 	    for(std::size_t x = tile.x0; x < tile.x1; ++x) {
-		F raster_x = x + static_cast<F>(0.5);
-		F raster_y = y + static_cast<F>(0.5);
+		const F raster_x = x + static_cast<F>(0.5);
+		const F raster_y = y + static_cast<F>(0.5);
 
-		F ndc_x = raster_x / image_width;
-		F ndc_y = raster_y / image_height;
+		const F ndc_x = raster_x / image_width;
+		const F ndc_y = raster_y / image_height;
 
-		F screen_x = (static_cast<F>(2.) * ndc_x) - static_cast<F>(1.);
-		F screen_y = static_cast<F>(1.) - (static_cast<F>(2.) * ndc_y);
+		const F screen_x = ((static_cast<F>(2.) * ndc_x) - static_cast<F>(1.) * aspect_ratio);
+		const F screen_y = static_cast<F>(1.) - (static_cast<F>(2.) * ndc_y);
 
-		screen_x *= aspect_ratio;
+		vec3<F> direction{screen_x, screen_y, static_cast<F>(-1.)};
+		direction = camera.matrix * direction;
+		direction.normalize();
 
-		vec3<F> direction({screen_x, screen_y, static_cast<F>(-1.)});
-		direction = direction * camera.matrix;
-		ray3<F> ray(camera.position, direction.norm());
+		ray3<F> ray(camera.position, direction);
 
-		auto camera_hit = accel.template trace<true>(ray);
+		const auto camera_hit = accel.template trace<true>(ray);
 
 		if(!camera_hit.has_value())
 		    continue;
@@ -59,7 +59,7 @@ requires accelerator<A, F> {
 	}
     };
 
-    std::size_t num_threads = std::thread::hardware_concurrency();
+    const std::size_t num_threads = std::thread::hardware_concurrency();
     tile_queue queue;
     switch (threading) {
 	case scheduling_type::SINGLE_TILE:
@@ -86,7 +86,7 @@ requires accelerator<A, F> {
 	future.get();
     }
 
-    return { image_height, image_width, std::move(pixels) };
+    return {image_height, image_width, std::move(pixels)};
 }
 
 template <typename A, typename F>
@@ -95,7 +95,7 @@ requires accelerator<A, F> {
     const auto& scene = *accel.scene_ptr;
 
     while (0 < max_t) {
-	const auto& hit = accel.template trace<false>(ray);
+	const auto hit = accel.template trace<false>(ray);
 
 	if (!hit.has_value() || max_t < hit->distance) {
 	    return false;
@@ -139,7 +139,7 @@ requires accelerator<A, F> {
 		F sphere_radius = light_direction.len();
 		F sphere_area = 4. * std::numbers::pi_v<F> * sphere_radius * sphere_radius;
 
-		light_direction = light_direction.norm();
+		light_direction.normalize();
 
 		F cosine_law;
 		if(m.smooth_shading) {
@@ -174,9 +174,9 @@ requires accelerator<A, F> {
 	    return color_hit(accel, reflection_hit.value(), ray_depth + 1);	
 	} else if constexpr (std::same_as<M, refractive_material<F>>) {
 	    vec3<F> n = m.smooth_shading ? hit_normal : face_normal;
-	    n = n.norm();
+	    n.normalize();
 	    vec3<F> i = incoming_ray.direction;
-	    i = i.norm();
+	    i.normalize();
 
 	    F eta_i = 1.;
 	    F eta_r = m.ior;
@@ -203,7 +203,7 @@ requires accelerator<A, F> {
 	    F sin_r_mn = ((sin_i_n * eta_i) / eta_r);
 	    F cos_r_mn = std::sqrt(1 - sin_r_mn * sin_r_mn);
 
-	    vec3<F> r = -n * cos_r_mn + (i + n * cos_i_n).norm() * sin_r_mn;
+	    vec3<F> r = (cos_r_mn * (-n)) + sin_r_mn * norm(i + (cos_i_n * n));
 
 	    ray3<F> refraction_ray(hit_position + (static_cast<F>(refraction_bias) * r), r);
 	    auto refraction_hit = accel.template trace<false>(refraction_ray);
