@@ -14,13 +14,13 @@
 #include <raytracer/render/tile/region.hpp>
 #include <raytracer/render/tile/bucket.hpp>
 
-constexpr double shadow_bias = 1e-5;
-constexpr double reflection_bias = 1e-5;
-constexpr double refraction_bias = 1e-5;
+constexpr double shadow_bias = 1e-4;
+constexpr double reflection_bias = 1e-4;
+constexpr double refraction_bias = 1e-4;
 constexpr int max_ray_depth = 4;
 
 template <typename A, typename F>
-constexpr image<F> render_frame(const A& accel, scheduling_type threading)
+constexpr image<F> render_frame(const A& accel, const scheduling_type threading)
 requires accelerator<A, F> {
     const scene<F>& scene = *accel.scene_ptr;
 

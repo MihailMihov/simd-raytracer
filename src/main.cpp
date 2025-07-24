@@ -52,11 +52,14 @@ int main(int argc, char **argv) {
 
     const std::filesystem::path& scene_file_path = argv[1];
 
-    const auto scene = parse_scene_file<float>(scene_file_path);
+    using float_t = float;
+    using accel_t = kd_tree_simd_accel<float_t>;
 
-    auto accelerator = kd_tree_simd_accel(std::make_shared<decltype(scene)>(scene));
+    const auto scene = parse_scene_file<float_t>(scene_file_path);
 
-    render_still<decltype(accelerator), float>(std::move(accelerator));
+    auto accelerator = accel_t(std::make_shared<decltype(scene)>(scene));
+
+    render_still<decltype(accelerator), float_t>(std::move(accelerator));
 
     return 0;
 }

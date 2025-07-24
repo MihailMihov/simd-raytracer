@@ -15,7 +15,7 @@ namespace stdx = std::experimental;
 constexpr std::size_t max_depth_simd = 8;
 constexpr std::size_t max_primitive_count_simd = 16;
 
-template <typename F, std::size_t W = stdx::native_simd<F>::size()>
+template <typename F, std::size_t W>
 struct triangle_pack {
     using simd_f = stdx::native_simd<F>;
     using simd_f_mask = typename simd_f::mask_type;
