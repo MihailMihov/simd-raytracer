@@ -44,16 +44,14 @@ struct triangle_pack {
 	const simd_f tvec_z{ray.origin.z - v0z};
 
 	u = (tvec_x * pvec_x + tvec_y * pvec_y + tvec_z * pvec_z) * inv_det;
-	mask &= (static_cast<F>(0.) <= u);
-	mask &= (u <= static_cast<F>(1.));
+	mask &= (static_cast<F>(0.) <= u) & (u <= static_cast<F>(1.));
 
 	const simd_f qvec_x = tvec_y * e1z - tvec_z * e1y;
 	const simd_f qvec_y = tvec_z * e1x - tvec_x * e1z;
 	const simd_f qvec_z = tvec_x * e1y - tvec_y * e1x;
 
 	v = (ray.direction.x * qvec_x + ray.direction.y * qvec_y + ray.direction.z * qvec_z) * inv_det;
-	mask &= (static_cast<F>(0.) <= v);
-	mask &= (u + v <= static_cast<F>(1.));
+	mask &= (static_cast<F>(0.) <= v) & (u + v <= static_cast<F>(1.));
 
 	t = (e2x * qvec_x + e2y * qvec_y + e2z * qvec_z) * inv_det;
 	mask &= (eps < t);
@@ -71,18 +69,23 @@ struct kd_tree_simd_accel {
     using simd_f = stdx::fixed_size_simd<F, W>;
     using simd_f_mask = simd_f::mask_type;
 
-    struct kd_tree_node {
+    static constexpr std::size_t EMPTY = std::numeric_limits<std::size_t>::max();
+    static constexpr F MAX_F = std::numeric_limits<F>::max();
+
+    struct node {
+	std::size_t parent;
+
 	aabb3<F> box;
-	int32_t parent;
-	int32_t child0;
-	int32_t child1;
+	std::size_t child0;
+	std::size_t child1;
+
 	std::size_t start_idx;
 	std::size_t pack_count;
     };
 
     std::shared_ptr<const scene<F>> scene_ptr;
     std::vector<triangle<F>> triangles;
-    std::vector<kd_tree_node> tree;
+    std::vector<node> tree;
     std::vector<triangle_pack<F, W>> triangle_packs;
 
     kd_tree_simd_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
@@ -98,7 +101,7 @@ struct kd_tree_simd_accel {
 	    }
 	}
 
-	tree.emplace_back(root_box, -1, -1, -1, std::numeric_limits<std::size_t>::max(), 0);
+	tree.emplace_back(EMPTY, root_box, EMPTY, EMPTY, EMPTY, 0);
 	build_tree(0, 0, triangle_indices);
     }
 
@@ -158,27 +161,27 @@ struct kd_tree_simd_accel {
 	}
 
 	if (!child0_triangle_indices.empty()) {
-	    std::size_t child0_idx = tree.size();
-	    tree.emplace_back(aabb0, parent_idx, -1, -1, std::numeric_limits<std::size_t>::max(), 0);
+	    const std::size_t child0_idx = tree.size();
+	    tree.emplace_back(parent_idx, aabb0, EMPTY, EMPTY, EMPTY, 0);
 	    tree[parent_idx].child0 = child0_idx;
 	    build_tree(child0_idx, depth + 1, child0_triangle_indices);
 	}
 
 	if (!child1_triangle_indices.empty()) {
-	    std::size_t child1_idx = tree.size();
-	    tree.emplace_back(aabb1, parent_idx, -1, -1, std::numeric_limits<std::size_t>::max(), 0);
+	    const std::size_t child1_idx = tree.size();
+	    tree.emplace_back(parent_idx, aabb1, EMPTY, EMPTY, EMPTY, 0);
 	    tree[parent_idx].child1 = child1_idx;
 	    build_tree(child1_idx, depth + 1, child1_triangle_indices);
 	}
     }
 
     template <bool backface_culling>
-    constexpr std::optional<hit_record<F>> intersect(const ray3<F>& ray) const {
-	F best_t = std::numeric_limits<F>::max();
-	F best_u = std::numeric_limits<F>::max();
-	F best_v = std::numeric_limits<F>::max();
-	std::size_t best_pack = std::numeric_limits<std::size_t>::max();
-	std::size_t best_lane = std::numeric_limits<std::size_t>::max();
+    constexpr std::optional<scene_hit<F>> intersect(const ray3<F>& ray) const {
+	F best_t = MAX_F;
+	F best_u = MAX_F;
+	F best_v = MAX_F;
+	std::size_t best_pack = EMPTY;
+	std::size_t best_lane = EMPTY;
 
 	std::stack<std::size_t, std::vector<std::size_t>> nodes_to_check;
 	nodes_to_check.push(0);
@@ -194,12 +197,12 @@ struct kd_tree_simd_accel {
 		continue;
 	    }
 
-	    if (node.start_idx == std::numeric_limits<std::size_t>::max()) {
-		if (node.child0 != -1) {
+	    if (node.start_idx == EMPTY) {
+		if (node.child0 != EMPTY) {
 		    nodes_to_check.push(node.child0);
 		}
 
-		if (node.child1 != -1) {
+		if (node.child1 != EMPTY) {
 		    nodes_to_check.push(node.child1);
 		}
 	    } else {
@@ -231,7 +234,7 @@ struct kd_tree_simd_accel {
 	    }
 	}
 
-	if (best_t == std::numeric_limits<F>::max()) {
+	if (best_t == MAX_F) {
 	    return std::nullopt;
 	}
 
@@ -251,7 +254,7 @@ struct kd_tree_simd_accel {
 
 	const vec3<F> hit_normal = norm(best_u * mesh.vertex_normals[v1_idx] + best_v * mesh.vertex_normals[v2_idx] + w * mesh.vertex_normals[v0_idx]);
 
-	return hit_record<F>{
+	return scene_hit<F>{
 	    ray,
 	    ray.origin + (best_t * ray.direction),
 	    hit_normal,

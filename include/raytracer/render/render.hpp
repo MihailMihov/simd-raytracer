@@ -116,7 +116,7 @@ requires accelerator<A, F> {
 }
 
 template <typename A, typename F>
-constexpr color<F> color_hit(const A& accel, const hit_record<F>& hit_record, const std::size_t ray_depth)
+constexpr color<F> color_hit(const A& accel, const scene_hit<F>& hit_record, const std::size_t ray_depth)
 requires accelerator<A, F> {
     const scene<F>& scene = *accel.scene_ptr;
 

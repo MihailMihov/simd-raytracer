@@ -9,7 +9,7 @@ struct checker_texture {
     color<F> color_b;
     F square_size;
 
-    color<F> sample(const hit_record<F>& hit, const vec3<vec2<F>>& uvs) const {
+    color<F> sample(const scene_hit<F>& hit, const vec3<vec2<F>>& uvs) const {
 	const F hit_u = hit.u;
 	const F hit_v = hit.v;
 	const F hit_w = 1. - hit_u - hit_v;

@@ -7,7 +7,8 @@
 #include <raytracer/core/math/aabb3.hpp>
 #include <raytracer/scene/primitive/hit.hpp>
 
-template <typename F>
+template <typename F,
+	  F eps = static_cast<F>(1e-6)>
 struct triangle {
     vec3<F> v0, v1, v2;
     vec3<F> e1, e2;
@@ -35,11 +36,11 @@ struct triangle {
 	const F det = dot(e1, pvec);
 
 	if constexpr (backface_culling) {
-	    if (det <= std::numeric_limits<F>::epsilon()) {
+	    if (det <= eps) {
 		return std::nullopt;
 	    }
 	} else {
-	    if (std::abs(det) <= std::numeric_limits<F>::epsilon()) {
+	    if (std::abs(det) <= eps) {
 		return std::nullopt;
 	    }
 	}
@@ -59,7 +60,7 @@ struct triangle {
 	}
 
 	const F dist = dot(e2, qvec) * inv_det;
-	if (dist < std::numeric_limits<F>::epsilon()) {
+	if (dist < eps) {
 	    return std::nullopt;
 	}
 
