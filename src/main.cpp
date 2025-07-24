@@ -7,6 +7,7 @@
 #include <raytracer/io/json/loader.hpp>
 #include <raytracer/scene/scene.hpp>
 #include <raytracer/render/render.hpp>
+#include <raytracer/render/accel/kd_tree_simd.hpp>
 
 constexpr std::size_t total_frames = 200;
 
@@ -53,7 +54,7 @@ int main(int argc, char **argv) {
 
     const auto scene = parse_scene_file<float>(scene_file_path);
 
-    auto accelerator = kd_tree_accel(std::make_shared<decltype(scene)>(scene));
+    auto accelerator = kd_tree_simd_accel(std::make_shared<decltype(scene)>(scene));
 
     render_still<decltype(accelerator), float>(std::move(accelerator));
 
