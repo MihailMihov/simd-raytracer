@@ -87,7 +87,7 @@ struct kd_tree_accel {
     }
 
     template <bool backface_culling>
-    constexpr std::optional<hit_record<F>> trace(const ray3<F>& ray) const {
+    constexpr std::optional<hit_record<F>> intersect(const ray3<F>& ray) const {
 	std::optional<hit_record<F>> closest_hit;
 
 	std::stack<std::size_t, std::vector<std::size_t>> nodes_to_check;

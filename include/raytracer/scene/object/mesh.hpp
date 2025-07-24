@@ -59,8 +59,9 @@ struct mesh_object {
 		vec3<F> v0_normal = vertex_normals[triangle.vertex_indices[0]];
 		vec3<F> v1_normal = vertex_normals[triangle.vertex_indices[1]];
 		vec3<F> v2_normal = vertex_normals[triangle.vertex_indices[2]];
+		vec3<F> hit_position = ray.origin + (maybe_hit->distance * ray.direction);
 		vec3<F> hit_normal = v1_normal * maybe_hit->u + v2_normal * maybe_hit->v + v0_normal * (1 - maybe_hit->u - maybe_hit->v);
-		closest_hit = object_hit<F>(ray, maybe_hit->position, hit_normal, triangle.normal, triangle.uvs, maybe_hit->distance, maybe_hit->u, maybe_hit->v, triangle_idx);
+		closest_hit = object_hit<F>(ray, hit_position, hit_normal, triangle.normal, triangle.uvs, maybe_hit->distance, maybe_hit->u, maybe_hit->v, triangle_idx);
 	    }
 	}
 

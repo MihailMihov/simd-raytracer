@@ -8,6 +8,12 @@
 #include <raytracer/core/math/ray3.hpp>
 
 template <typename F>
+struct box_hit {
+    F t_min;
+    F t_max;
+};
+
+template <typename F>
 struct aabb3 {
     vec3<F> min;
     vec3<F> max;
@@ -65,7 +71,7 @@ struct aabb3 {
 	       (other.min.z < max.z && min.z <= other.max.z);
     }
 
-    [[nodiscard]] constexpr bool intersect(const ray3<F>& ray) const noexcept {
+    [[nodiscard]] constexpr std::optional<box_hit<F>> intersect(const ray3<F>& ray) const noexcept {
 	F t_min = static_cast<F>(0.);
 	F t_max = std::numeric_limits<F>::max();
 
@@ -77,10 +83,14 @@ struct aabb3 {
 	    t_max = std::max(std::min(t1, t_max), std::min(t2, t_max));
 	}
 
-	return t_min <= t_max;
+	if (t_min <= t_max) {
+	    return {{t_min, t_max}};
+	}
+
+	return std::nullopt;
     }
 
-    [[nodiscard]] constexpr std::optional<F> intersect(const ray3<F>& ray, F t_max) const noexcept {
+    [[nodiscard]] constexpr std::optional<box_hit<F>> intersect(const ray3<F>& ray, F t_max) const noexcept {
 	F t_min = static_cast<F>(0.);
 
 	for (std::size_t axis = 0; axis < 3; ++axis) {
@@ -92,7 +102,7 @@ struct aabb3 {
 	}
 
 	if (t_min <= t_max) {
-	    return t_min;
+	    return {{t_min, t_max}};
 	}
 
 	return std::nullopt;

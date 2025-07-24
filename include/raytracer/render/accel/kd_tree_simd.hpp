@@ -12,20 +12,17 @@
 
 namespace stdx = std::experimental;
 
-constexpr std::size_t max_depth_simd = 8;
-constexpr std::size_t max_primitive_count_simd = 16;
-
 template <typename F, std::size_t W>
 struct triangle_pack {
-    using simd_f = stdx::native_simd<F>;
-    using simd_f_mask = typename simd_f::mask_type;
+    using simd_f = stdx::fixed_size_simd<F, W>;
+    using simd_f_mask = simd_f::mask_type;
     
     simd_f v0x, v0y, v0z;
     simd_f e1x, e1y, e1z;
     simd_f e2x, e2y, e2z;
     std::array<std::size_t, W> triangle_indices;
 
-    template <bool backface_culling>
+    template <bool backface_culling, F eps>
     constexpr simd_f_mask intersect(const ray3<F>& ray, simd_f& u, simd_f& v, simd_f& t) const noexcept {
 	const simd_f pvec_x = ray.direction.y * e2z - ray.direction.z * e2y;
 	const simd_f pvec_y = ray.direction.z * e2x - ray.direction.x * e2z;
@@ -35,9 +32,9 @@ struct triangle_pack {
 
 	simd_f_mask mask{true};
 	if constexpr (backface_culling) {
-	    mask = std::numeric_limits<F>::epsilon() <= det;
+	    mask = eps <= det;
 	} else {
-	    mask = std::numeric_limits<F>::epsilon() <= stdx::abs(det);
+	    mask = eps <= stdx::abs(det);
 	}
 
 	const simd_f inv_det = static_cast<F>(1.) / det;
@@ -59,16 +56,20 @@ struct triangle_pack {
 	mask &= (u + v <= static_cast<F>(1.));
 
 	t = (e2x * qvec_x + e2y * qvec_y + e2z * qvec_z) * inv_det;
-	mask &= (std::numeric_limits<F>::epsilon() < t);
+	mask &= (eps < t);
 
 	return mask;
     }
 };
 
-template <typename F, std::size_t W = stdx::native_simd<F>::size()>
+template <typename F,
+	  F eps = static_cast<F>(1e-6),
+	  std::size_t max_depth = 8,
+	  std::size_t max_leaf_size = 64,
+	  std::size_t W = stdx::native_simd<F>::size()>
 struct kd_tree_simd_accel {
-    using simd_f = stdx::native_simd<F>;
-    using simd_f_mask = typename simd_f::mask_type;
+    using simd_f = stdx::fixed_size_simd<F, W>;
+    using simd_f_mask = simd_f::mask_type;
 
     struct kd_tree_node {
 	aabb3<F> box;
@@ -101,35 +102,38 @@ struct kd_tree_simd_accel {
 	build_tree(0, 0, triangle_indices);
     }
 
-    constexpr void build_tree(const int32_t parent_idx, const std::size_t depth, const std::vector<std::size_t>& triangle_indices) {
-	if (depth == max_depth_simd || triangle_indices.size() <= max_primitive_count_simd) {
-	    const std::size_t first_pack = triangle_packs.size();
-	    
-	    for (std::size_t i = 0; i < triangle_indices.size(); i += W) {
-		triangle_pack<F, W> pack{};
-		for (std::size_t lane = 0; lane < W; ++lane) {
-		    const std::size_t triangle_idx = triangle_indices[std::min(i + lane, triangle_indices.size() - 1)];
+    constexpr void build_tree_leaf(const std::size_t parent_idx, const std::vector<std::size_t>& triangle_indices) {
+	const std::size_t first_pack = triangle_packs.size();
+	
+	for (std::size_t i = 0; i < triangle_indices.size(); i += W) {
+	    triangle_pack<F, W> pack{};
+	    for (std::size_t lane = 0; lane < W; ++lane) {
+		const std::size_t triangle_idx = triangle_indices[std::min(i + lane, triangle_indices.size() - 1)];
 
-		    const auto& triangle = triangles[triangle_idx];
+		const auto& triangle = triangles[triangle_idx];
 
-		    pack.v0x[lane] = triangle.v0.x;
-		    pack.v0y[lane] = triangle.v0.y;
-		    pack.v0z[lane] = triangle.v0.z;
-		    pack.e1x[lane] = triangle.e1.x;
-		    pack.e1y[lane] = triangle.e1.y;
-		    pack.e1z[lane] = triangle.e1.z;
-		    pack.e2x[lane] = triangle.e2.x;
-		    pack.e2y[lane] = triangle.e2.y;
-		    pack.e2z[lane] = triangle.e2.z;
-		    pack.triangle_indices[lane] = triangle_idx;
-		}
-
-		triangle_packs.push_back(pack);
+		pack.v0x[lane] = triangle.v0.x;
+		pack.v0y[lane] = triangle.v0.y;
+		pack.v0z[lane] = triangle.v0.z;
+		pack.e1x[lane] = triangle.e1.x;
+		pack.e1y[lane] = triangle.e1.y;
+		pack.e1z[lane] = triangle.e1.z;
+		pack.e2x[lane] = triangle.e2.x;
+		pack.e2y[lane] = triangle.e2.y;
+		pack.e2z[lane] = triangle.e2.z;
+		pack.triangle_indices[lane] = triangle_idx;
 	    }
-	    
-	    tree[parent_idx].start_idx = first_pack;
-	    tree[parent_idx].pack_count = triangle_packs.size() - first_pack;
 
+	    triangle_packs.push_back(pack);
+	}
+	
+	tree[parent_idx].start_idx = first_pack;
+	tree[parent_idx].pack_count = triangle_packs.size() - first_pack;
+    }
+
+    constexpr void build_tree(const int32_t parent_idx, const std::size_t depth, const std::vector<std::size_t>& triangle_indices) {
+	if (depth == max_depth || triangle_indices.size() <= max_leaf_size) {
+	    build_tree_leaf(parent_idx, triangle_indices);
 	    return;
 	}
 
@@ -169,7 +173,7 @@ struct kd_tree_simd_accel {
     }
 
     template <bool backface_culling>
-    constexpr std::optional<hit_record<F>> trace(const ray3<F>& ray) const {
+    constexpr std::optional<hit_record<F>> intersect(const ray3<F>& ray) const {
 	F best_t = std::numeric_limits<F>::max();
 	F best_u = std::numeric_limits<F>::max();
 	F best_v = std::numeric_limits<F>::max();
@@ -186,7 +190,7 @@ struct kd_tree_simd_accel {
 	    const auto& node = tree[node_idx];
 
 	    auto maybe_box_hit = node.box.intersect(ray, best_t);
-	    if (!maybe_box_hit || best_t <= maybe_box_hit.value()) {
+	    if (!maybe_box_hit || best_t <= maybe_box_hit->t_min) {
 		continue;
 	    }
 
@@ -203,7 +207,7 @@ struct kd_tree_simd_accel {
 		    const auto& pack = triangle_packs[pack_idx];
 
 		    simd_f u, v, t;
-		    simd_f_mask mask = pack.template intersect<backface_culling>(ray, u, v, t);
+		    simd_f_mask mask = pack.template intersect<backface_culling, eps>(ray, u, v, t);
 
 		    if (stdx::none_of(mask)) {
 			continue;

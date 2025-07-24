@@ -7,6 +7,6 @@
 
 template <typename A, typename F>
 concept accelerator = requires(A accel, const ray3<F>& ray) {
-    { accel.template trace<true>(ray) } -> std::same_as<std::optional<hit_record<F>>>;
-    { accel.template trace<false>(ray) } -> std::same_as<std::optional<hit_record<F>>>;
+    { accel.template intersect<true>(ray) } -> std::same_as<std::optional<hit_record<F>>>;
+    { accel.template intersect<false>(ray) } -> std::same_as<std::optional<hit_record<F>>>;
 };

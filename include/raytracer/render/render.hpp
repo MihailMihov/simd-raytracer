@@ -50,7 +50,7 @@ requires accelerator<A, F> {
 
 		ray3<F> ray(camera.position, direction);
 
-		const auto camera_hit = accel.template trace<true>(ray);
+		const auto camera_hit = accel.template intersect<true>(ray);
 
 		if(!camera_hit.has_value())
 		    continue;
@@ -96,7 +96,7 @@ requires accelerator<A, F> {
     const auto& scene = *accel.scene_ptr;
 
     while (0 < max_t) {
-	const auto hit = accel.template trace<false>(ray);
+	const auto hit = accel.template intersect<false>(ray);
 
 	if (!hit.has_value() || max_t < hit->distance) {
 	    return false;
@@ -167,7 +167,7 @@ requires accelerator<A, F> {
 	    vec3<F> reflection_origin = hit_position + (static_cast<F>(reflection_bias) * reflection_direction);
 	    ray3<F> reflection_ray(reflection_origin, reflection_direction);
 
-	    auto reflection_hit = accel.template trace<false>(reflection_ray);
+	    auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
 	    if(!reflection_hit.has_value())
 		return scene.config.background_color;
@@ -193,7 +193,7 @@ requires accelerator<A, F> {
 	    if(eta_r / eta_i < sin_i_n) {
 		vec3<F> reflection_direction = i - static_cast<F>(2.) * dot(i, n) * n;
 		ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
-		auto reflection_hit = accel.template trace<false>(reflection_ray);
+		auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
 		if(!reflection_hit.has_value())
 		    return color<F>{};
@@ -207,7 +207,7 @@ requires accelerator<A, F> {
 	    vec3<F> r = (cos_r_mn * (-n)) + sin_r_mn * norm(i + (cos_i_n * n));
 
 	    ray3<F> refraction_ray(hit_position + (static_cast<F>(refraction_bias) * r), r);
-	    auto refraction_hit = accel.template trace<false>(refraction_ray);
+	    auto refraction_hit = accel.template intersect<false>(refraction_ray);
 
 	    color<F> refraction_color = color<F>{};
 	    if(refraction_hit.has_value()) {
@@ -216,7 +216,7 @@ requires accelerator<A, F> {
 
 	    vec3<F> reflection_direction = i - 2 * dot(i, n) * n;
 	    ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
-	    auto reflection_hit = accel.template trace<false>(reflection_ray);
+	    auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
 	    color<F> reflection_color = color<F>{};
 	    if(reflection_hit.has_value()) {

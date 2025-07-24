@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 
+#include <raytracer/core/math/ray3.hpp>
 #include <raytracer/core/math/aabb3.hpp>
 #include <raytracer/scene/scene.hpp>
 
@@ -18,7 +19,7 @@ struct list_accel {
     }
 
     template <bool backface_culling>
-    constexpr std::optional<hit_record<F>> trace(const ray3<F>& ray) const {
+    constexpr std::optional<hit_record<F>> intersect(const ray3<F>& ray) const {
 	std::optional<hit_record<F>> closest_hit;
 
 	for(const auto& [mesh_idx, mesh] : scene_ptr->meshes | std::ranges::views::enumerate) {

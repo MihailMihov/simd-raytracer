@@ -30,7 +30,7 @@ struct triangle {
     }
 
     template <bool backface_culling>
-    constexpr std::optional<primitive_hit<F>> intersect(const ray3<F>& ray) const noexcept {
+    constexpr std::optional<triangle_hit<F>> intersect(const ray3<F>& ray) const noexcept {
 	const vec3<F> pvec = cross(ray.direction, e2);
 	const F det = dot(e1, pvec);
 
@@ -63,9 +63,8 @@ struct triangle {
 	    return std::nullopt;
 	}
 
-	const F w = static_cast<F>(1.) - u - v;
 	const vec3<F> hit_position = ray.origin + (dist * ray.direction);
 
-	return primitive_hit<F>{ray, hit_position, dist, u, v, w};
+	return {dist, u, v};
     }
 };
