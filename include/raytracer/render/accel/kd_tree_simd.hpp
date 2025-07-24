@@ -76,7 +76,7 @@ struct kd_tree_simd_accel {
 	int32_t child0;
 	int32_t child1;
 	std::size_t start_idx;
-	std::size_t count;
+	std::size_t pack_count;
     };
 
     std::shared_ptr<const scene<F>> scene_ptr;
@@ -128,7 +128,7 @@ struct kd_tree_simd_accel {
 	    }
 	    
 	    tree[parent_idx].start_idx = first_pack;
-	    tree[parent_idx].count = triangle_packs.size() - first_pack;
+	    tree[parent_idx].pack_count = triangle_packs.size() - first_pack;
 
 	    return;
 	}
@@ -170,7 +170,11 @@ struct kd_tree_simd_accel {
 
     template <bool backface_culling>
     constexpr std::optional<hit_record<F>> trace(const ray3<F>& ray) const {
-	std::optional<hit_record<F>> closest_hit;
+	F best_t = std::numeric_limits<F>::max();
+	F best_u = std::numeric_limits<F>::max();
+	F best_v = std::numeric_limits<F>::max();
+	std::size_t best_pack = std::numeric_limits<std::size_t>::max();
+	std::size_t best_lane = std::numeric_limits<std::size_t>::max();
 
 	std::stack<std::size_t, std::vector<std::size_t>> nodes_to_check;
 	nodes_to_check.push(0);
@@ -180,10 +184,6 @@ struct kd_tree_simd_accel {
 	    nodes_to_check.pop();
 
 	    const auto& node = tree[node_idx];
-
-	    const F best_t = closest_hit
-		.transform([](const auto& hit) { return hit.distance; })
-		.value_or(std::numeric_limits<F>::max());
 
 	    auto maybe_box_hit = node.box.intersect(ray, best_t);
 	    if (!maybe_box_hit || best_t <= maybe_box_hit.value()) {
@@ -199,7 +199,7 @@ struct kd_tree_simd_accel {
 		    nodes_to_check.push(node.child1);
 		}
 	    } else {
-		for (std::size_t pack_idx = node.start_idx; pack_idx < node.start_idx + node.count; ++pack_idx) {
+		for (std::size_t pack_idx = node.start_idx; pack_idx < node.start_idx + node.pack_count; ++pack_idx) {
 		    const auto& pack = triangle_packs[pack_idx];
 
 		    simd_f u, v, t;
@@ -209,53 +209,55 @@ struct kd_tree_simd_accel {
 			continue;
 		    }
 
-		    const F best_t = closest_hit
-			.transform([](const auto& hit) { return hit.distance; })
-			.value_or(std::numeric_limits<F>::max());
-
 		    stdx::where(!mask, t) = best_t;
 
-		    F t_min = stdx::hmin(t);
+		    const F t_min = stdx::hmin(t);
 		    if (best_t <= t_min) {
 			continue;
 		    }
 
 		    mask &= (t == t_min);
 
-		    const std::size_t lane = stdx::find_first_set(mask);
-
-		    const F uu = u[lane];
-		    const F vv = v[lane];
-		    const F ww = static_cast<F>(1.) - uu - vv;
-
-		    const std::size_t triangle_idx = pack.triangle_indices[lane];
-		    const auto& triangle = triangles[triangle_idx];
-
-		    const std::size_t mesh_idx = triangle.mesh_idx;
-		    const std::size_t v0_idx = triangle.vertex_indices[0];
-		    const std::size_t v1_idx = triangle.vertex_indices[1];
-		    const std::size_t v2_idx = triangle.vertex_indices[2];
-
-		    const auto& mesh = scene_ptr->meshes[mesh_idx];
-
-		    const vec3<F> hit_normal = norm(uu * mesh.vertex_normals[v1_idx] + vv * mesh.vertex_normals[v2_idx] + ww * mesh.vertex_normals[v0_idx]);
-
-		    closest_hit = hit_record<F>{
-			ray,
-			ray.origin + (t_min * ray.direction),
-			hit_normal,
-			triangle.normal,
-			triangle.uvs,
-			t_min,
-			uu,
-			vv,
-			ww,
-			mesh_idx
-		    };
+		    best_pack = pack_idx;
+		    best_lane = stdx::find_first_set(mask);
+		    best_u = u[best_lane];
+		    best_v = v[best_lane];
+		    best_t = t_min;
 		}
 	    }
 	}
 
-	return closest_hit;
+	if (best_t == std::numeric_limits<F>::max()) {
+	    return std::nullopt;
+	}
+
+	const auto& pack = triangle_packs[best_pack];
+
+	const F w = static_cast<F>(1.) - best_u - best_v;
+
+	const std::size_t triangle_idx = pack.triangle_indices[best_lane];
+	const auto& triangle = triangles[triangle_idx];
+
+	const std::size_t mesh_idx = triangle.mesh_idx;
+	const std::size_t v0_idx = triangle.vertex_indices[0];
+	const std::size_t v1_idx = triangle.vertex_indices[1];
+	const std::size_t v2_idx = triangle.vertex_indices[2];
+
+	const auto& mesh = scene_ptr->meshes[mesh_idx];
+
+	const vec3<F> hit_normal = norm(best_u * mesh.vertex_normals[v1_idx] + best_v * mesh.vertex_normals[v2_idx] + w * mesh.vertex_normals[v0_idx]);
+
+	return hit_record<F>{
+	    ray,
+	    ray.origin + (best_t * ray.direction),
+	    hit_normal,
+	    triangle.normal,
+	    triangle.uvs,
+	    best_t,
+	    best_u,
+	    best_v,
+	    w,
+	    mesh_idx
+	};
     }
 };
