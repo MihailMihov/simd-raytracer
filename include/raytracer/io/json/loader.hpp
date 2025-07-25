@@ -27,11 +27,11 @@ vec3<F> load_vec3(simdjson::dom::array&& arr) {
 
 template <typename F>
 mat3<F> load_mat3(simdjson::dom::array&& arr) {
-    return mat3<F>{
+    return mat3<F>{{
 	load_f<F>(arr.at(0)), load_f<F>(arr.at(1)), load_f<F>(arr.at(2)),
 	load_f<F>(arr.at(3)), load_f<F>(arr.at(4)), load_f<F>(arr.at(5)),
 	load_f<F>(arr.at(6)), load_f<F>(arr.at(7)), load_f<F>(arr.at(8))
-    };
+    }};
 }
 
 template <typename F>

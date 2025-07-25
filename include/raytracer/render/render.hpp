@@ -2,6 +2,7 @@
 
 #include <thread>
 #include <future>
+#include <random>
 
 #include <raytracer/scene/scene.hpp>
 #include <raytracer/scene/material/material_queries.hpp>
@@ -17,7 +18,17 @@ constexpr double fov_degrees = 90.;
 constexpr double shadow_bias = 1e-5;
 constexpr double reflection_bias = 1e-5;
 constexpr double refraction_bias = 1e-5;
-constexpr int max_ray_depth = 6;
+
+constexpr std::size_t samples_per_pixel = 64;
+constexpr std::size_t max_ray_depth = 5;
+constexpr std::size_t diffuse_reflection_ray_count = 1;
+
+template <typename F>
+F urand01() noexcept {
+    thread_local std::minstd_rand engine(42);
+
+    return std::generate_canonical<F, std::numeric_limits<F>::digits>(engine);
+}
 
 template <typename F>
 constexpr F degrees_to_radians(const F degrees) {
@@ -39,32 +50,48 @@ requires accelerator<A, F> {
     auto tile_worker = [&](render_tile tile) {
 	for(std::size_t y = tile.y0; y < tile.y1; ++y) {
 	    for(std::size_t x = tile.x0; x < tile.x1; ++x) {
-		const F raster_x = x + static_cast<F>(0.5);
-		const F raster_y = y + static_cast<F>(0.5);
+		color<F> final_color{};
 
-		const F ndc_x = raster_x / image_width;
-		const F ndc_y = raster_y / image_height;
+		for (std::size_t s = 0; s < samples_per_pixel; ++s) {
+		    F raster_x = x;
+		    F raster_y = y;
 
-		F screen_x = (static_cast<F>(2.) * ndc_x) - static_cast<F>(1.);
-		F screen_y = static_cast<F>(1.) - (static_cast<F>(2.) * ndc_y);
+		    if constexpr (samples_per_pixel == 1) {
+			raster_x += static_cast<F>(0.5);
+			raster_y += static_cast<F>(0.5);
+		    } else {
+			raster_x += urand01<F>();
+			raster_y += urand01<F>();
+		    }
 
-		screen_x *= aspect_ratio;
+		    const F ndc_x = raster_x / image_width;
+		    const F ndc_y = raster_y / image_height;
 
-		const F fov_radians = degrees_to_radians(fov_degrees);
-		screen_x *= std::tan(fov_radians / static_cast<F>(2.));
-		screen_y *= std::tan(fov_radians / static_cast<F>(2.));
+		    F screen_x = (static_cast<F>(2.) * ndc_x) - static_cast<F>(1.);
+		    F screen_y = static_cast<F>(1.) - (static_cast<F>(2.) * ndc_y);
 
-		vec3<F> direction{screen_x, screen_y, static_cast<F>(-1.)};
-		direction = normalized(transpose(camera.matrix) * direction);
+		    screen_x *= aspect_ratio;
 
-		ray3<F> ray(camera.position, direction);
+		    const F fov_radians = degrees_to_radians(fov_degrees);
+		    screen_x *= std::tan(fov_radians / static_cast<F>(2.));
+		    screen_y *= std::tan(fov_radians / static_cast<F>(2.));
 
-		const auto camera_hit = accel.template intersect<true>(ray);
+		    vec3<F> direction{screen_x, screen_y, static_cast<F>(-1.)};
+		    direction = normalized(transpose(camera.matrix) * direction);
 
-		if(!camera_hit.has_value())
-		    continue;
+		    const ray3<F> ray(camera.position, direction);
 
-		pixels[y][x] = color_hit(accel, camera_hit.value(), 0uz);
+		    const auto camera_hit = accel.template intersect<true>(ray);
+		    if (camera_hit.has_value()) {
+			final_color += color_hit(accel, camera_hit.value(), 0uz);
+		    } else {
+			final_color += background_color;
+		    }
+		}
+
+		final_color /= static_cast<F>(samples_per_pixel);
+
+		pixels[y][x] = final_color;
 	    }
 	}
     };
@@ -140,14 +167,46 @@ requires accelerator<A, F> {
     return std::visit([&](const auto& material) -> color<F> {
 	using M = std::decay_t<decltype(material)>;
 
-	if constexpr (std::same_as<M, diffuse_material<F>> || std::same_as<M, texture_material<F>>) {
-	    color<F> final_color{static_cast<F>(0.), static_cast<F>(0.), static_cast<F>(0.)};
+	if constexpr (std::same_as<M, diffuse_material<F>>) {
+	    color<F> final_color{};
+	    for (std::size_t i = 0; i < diffuse_reflection_ray_count; ++i) {
+		const vec3<F> right_axis = normalized(cross(incoming_ray.direction, hit_normal));
+		const vec3<F> up_axis = hit_normal;
+		const vec3<F> forward_axis = cross(right_axis, up_axis);
+
+		const mat3<F> local_hit_mat(right_axis, up_axis, forward_axis);
+
+		const F rand_xy_angle = std::numbers::pi_v<F> * urand01<F>();
+		vec3<F> rand_xy_vec{std::cos(rand_xy_angle), std::sin(rand_xy_angle), 0};
+
+		const F rand_xz_angle = std::numbers::pi_v<F> * urand01<F>() * static_cast<F>(2.);
+		const mat3<F> rotate_y_mat{{
+		    std::cos(rand_xz_angle),	static_cast<F>(0.), -std::sin(rand_xz_angle),
+		    static_cast<F>(0.),		static_cast<F>(1.), static_cast<F>(0.),
+		    std::sin(rand_xz_angle),	static_cast<F>(0.), std::cos(rand_xz_angle)
+		}};
+
+		rand_xy_vec = rotate_y_mat * rand_xy_vec;
+
+		const vec3<F> diffuse_reflection_ray_origin = hit_position + (static_cast<F>(reflection_bias) * hit_normal);
+		const vec3<F> diffuse_reflection_ray_direction = local_hit_mat * rand_xy_vec;
+
+		const ray3<F> diffuse_reflection_ray{diffuse_reflection_ray_origin, diffuse_reflection_ray_direction};
+
+		const auto diffuse_reflection_hit = accel.template intersect<false>(diffuse_reflection_ray);
+
+		if (!diffuse_reflection_hit.has_value())
+		    continue;
+
+		final_color += color_hit(accel, diffuse_reflection_hit.value(), ray_depth + 1);
+	    }
+
 	    for (const auto& light : scene.lights) {
 		const vec3<F> light_position = light.position;
 		vec3<F> light_direction = light_position - hit_position;
 
 		const F sphere_radius = light_direction.len();
-		const F sphere_area = 4. * std::numbers::pi_v<F> * sphere_radius * sphere_radius;
+		const F sphere_area = static_cast<F>(4.) * std::numbers::pi_v<F> * sphere_radius * sphere_radius;
 
 		light_direction = normalized(light_direction);
 
@@ -162,12 +221,34 @@ requires accelerator<A, F> {
 		if (is_occluded(accel, shadow_ray, sphere_radius))
 		    continue;
 
-		if constexpr (std::same_as<M, diffuse_material<F>>) {
-		    final_color = final_color + color<F>(material.albedo * ((light.intensity / sphere_area) * cosine_law));
+		final_color += ((light.intensity / sphere_area) * cosine_law) * material.albedo;
+	    }
+
+	    return final_color / static_cast<F>(diffuse_reflection_ray_count + 1);
+	} else if constexpr (std::same_as<M, texture_material<F>>) {
+	    color<F> final_color{};
+	    for (const auto& light : scene.lights) {
+		const vec3<F> light_position = light.position;
+		vec3<F> light_direction = light_position - hit_position;
+
+		const F sphere_radius = light_direction.len();
+		const F sphere_area = static_cast<F>(4.) * std::numbers::pi_v<F> * sphere_radius * sphere_radius;
+
+		light_direction = normalized(light_direction);
+
+		F cosine_law;
+		if (material.smooth_shading) {
+		    cosine_law = std::max(static_cast<F>(0.), dot(light_direction, hit_normal));
 		} else {
-		    const auto& texture_variant = scene.textures.at(material.texture);
-		    final_color = final_color + color<F>(sample(texture_variant, hit_record, uvs) * ((light.intensity / sphere_area) * cosine_law));
+		    cosine_law = std::max(static_cast<F>(0.), dot(light_direction, face_normal));
 		}
+
+		const ray3<F> shadow_ray(hit_position + (static_cast<F>(shadow_bias) * light_direction), light_direction);
+		if (is_occluded(accel, shadow_ray, sphere_radius))
+		    continue;
+
+		const auto& texture_variant = scene.textures.at(material.texture);
+		final_color += ((light.intensity / sphere_area) * cosine_law) * sample(texture_variant, hit_record, uvs);
 	    }
 
 	    return final_color;
@@ -178,7 +259,7 @@ requires accelerator<A, F> {
 
 	    const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
-	    if(!reflection_hit.has_value())
+	    if (!reflection_hit.has_value())
 		return scene.config.background_color;
 
 	    return color_hit(accel, reflection_hit.value(), ray_depth + 1);	
@@ -189,7 +270,7 @@ requires accelerator<A, F> {
 	    F eta_i = static_cast<F>(1.);
 	    F eta_r = material.ior;
 
-	    if(static_cast<F>(0.) < dot(i, n)) {
+	    if (static_cast<F>(0.) < dot(i, n)) {
 		std::swap(eta_i, eta_r);
 		n = -n;
 	    }
@@ -197,12 +278,12 @@ requires accelerator<A, F> {
 	    const F cos_i_n = -dot(i, n);
 	    const F sin_i_n = std::sqrt(static_cast<F>(1.) - cos_i_n * cos_i_n);
 
-	    if(eta_r / eta_i < sin_i_n) {
+	    if (eta_r / eta_i < sin_i_n) {
 		const vec3<F> reflection_direction = i - static_cast<F>(2.) * dot(i, n) * n;
 		const ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
 		const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
-		if(!reflection_hit.has_value())
+		if (!reflection_hit.has_value())
 		    return color<F>{};
 
 		return color_hit(accel, reflection_hit.value(), ray_depth + 1);	
@@ -216,8 +297,8 @@ requires accelerator<A, F> {
 	    const ray3<F> refraction_ray(hit_position + (static_cast<F>(refraction_bias) * r), r);
 	    const auto refraction_hit = accel.template intersect<false>(refraction_ray);
 
-	    color<F> refraction_color = color<F>{};
-	    if(refraction_hit.has_value()) {
+	    color<F> refraction_color{};
+	    if (refraction_hit.has_value()) {
 		refraction_color = color_hit(accel, refraction_hit.value(), ray_depth + 1);
 	    }
 
@@ -225,8 +306,8 @@ requires accelerator<A, F> {
 	    const ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
 	    const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
-	    auto reflection_color = color<F>{};
-	    if(reflection_hit.has_value()) {
+	    color<F> reflection_color{};
+	    if (reflection_hit.has_value()) {
 		reflection_color = color_hit(accel, reflection_hit.value(), ray_depth + 1);
 	    }
 

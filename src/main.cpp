@@ -50,9 +50,9 @@ int main(int argc, char **argv) {
 
     const std::filesystem::path& scene_file_path = argv[1];
 
-    using float_t = double;
+    using float_t = float;
 
-    constexpr float_t eps = static_cast<float_t>(1e-8);
+    constexpr float_t eps = static_cast<float_t>(1e-6);
 
     using accel_t = kd_tree_simd_accel<float_t, eps>;
 
