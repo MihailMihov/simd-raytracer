@@ -7,8 +7,6 @@
 #include <raytracer/io/json/loader.hpp>
 #include <raytracer/scene/scene.hpp>
 #include <raytracer/render/render.hpp>
-#include "raytracer/render/accel/list.hpp"
-#include "raytracer/render/accel/kd_tree.hpp"
 #include <raytracer/render/accel/kd_tree_simd.hpp>
 
 constexpr std::size_t total_frames = 200;

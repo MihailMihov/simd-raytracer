@@ -4,7 +4,6 @@
 #include <stack>
 #include <optional>
 #include <cmath>
-#include <print>
 
 #include <experimental/simd>
 

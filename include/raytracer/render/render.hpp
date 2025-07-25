@@ -13,10 +13,16 @@
 #include <raytracer/render/tile/region.hpp>
 #include <raytracer/render/tile/bucket.hpp>
 
+constexpr double fov_degrees = 90.;
 constexpr double shadow_bias = 1e-5;
 constexpr double reflection_bias = 1e-5;
 constexpr double refraction_bias = 1e-5;
 constexpr int max_ray_depth = 6;
+
+template <typename F>
+constexpr F degrees_to_radians(const F degrees) {
+    return degrees * (std::numbers::pi_v<F> / static_cast<F>(180.));
+}
 
 template <typename A, typename F>
 constexpr image<F> render_frame(const A& accel, const scheduling_type threading)
@@ -44,8 +50,9 @@ requires accelerator<A, F> {
 
 		screen_x *= aspect_ratio;
 
-		screen_x *= std::tan(std::numbers::pi_v<F> / static_cast<F>(4.));
-		screen_y *= std::tan(std::numbers::pi_v<F> / static_cast<F>(4.));
+		const F fov_radians = degrees_to_radians(fov_degrees);
+		screen_x *= std::tan(fov_radians / static_cast<F>(2.));
+		screen_y *= std::tan(fov_radians / static_cast<F>(2.));
 
 		vec3<F> direction{screen_x, screen_y, static_cast<F>(-1.)};
 		direction = normalized(transpose(camera.matrix) * direction);
