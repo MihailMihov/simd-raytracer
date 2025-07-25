@@ -19,22 +19,22 @@ struct list_accel {
     }
 
     template <bool backface_culling>
-    constexpr std::optional<scene_hit<F>> intersect(const ray3<F>& ray) const {
-	std::optional<scene_hit<F>> closest_hit;
+    constexpr std::optional<hit<F>> intersect(const ray3<F>& ray) const {
+	std::optional<hit<F>> closest_hit;
 
 	for(const auto& [mesh_idx, mesh] : scene_ptr->meshes | std::ranges::views::enumerate) {
 	    if (!root_box.intersect(ray)) {
 		continue;
 	    }
 
-	    auto maybe_hit = mesh.template intersect<backface_culling>(ray);
+	    const auto maybe_hit = mesh.template intersect<backface_culling, eps>(ray);
 
 	    if (maybe_hit && (!closest_hit || maybe_hit->distance < closest_hit->distance)) {
 		const F u = maybe_hit->u;
 		const F v = maybe_hit->v;
 		const F w = static_cast<F>(1.) - u - v;
 
-		closest_hit = scene_hit<F>{
+		closest_hit = hit<F>{
 		    ray,
 		    maybe_hit->position,
 		    maybe_hit->hit_normal,

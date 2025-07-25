@@ -4,6 +4,7 @@
 #include <stack>
 #include <optional>
 #include <cmath>
+#include <print>
 
 #include <experimental/simd>
 
@@ -176,7 +177,7 @@ struct kd_tree_simd_accel {
     }
 
     template <bool backface_culling>
-    [[nodiscard]] constexpr std::optional<scene_hit<F>> intersect(const ray3<F>& ray) const noexcept {
+    [[nodiscard]] constexpr std::optional<hit<F>> intersect(const ray3<F>& ray) const noexcept {
 	F best_t = MAX_F;
 	F best_u = MAX_F;
 	F best_v = MAX_F;
@@ -192,8 +193,8 @@ struct kd_tree_simd_accel {
 
 	    const auto& node = tree[node_idx];
 
-	    auto maybe_box_hit = node.box.intersect(ray, best_t);
-	    if (!maybe_box_hit || best_t <= maybe_box_hit->t_min) {
+	    auto maybe_box_hit = node.box.intersect(ray);
+	    if (!maybe_box_hit || best_t < maybe_box_hit->t_min) {
 		continue;
 	    }
 
@@ -254,7 +255,7 @@ struct kd_tree_simd_accel {
 
 	const vec3<F> hit_normal = normalized(best_u * mesh.vertex_normals[v1_idx] + best_v * mesh.vertex_normals[v2_idx] + w * mesh.vertex_normals[v0_idx]);
 
-	return scene_hit<F>{
+	return hit<F>{
 	    ray,
 	    ray.origin + (best_t * ray.direction),
 	    hit_normal,

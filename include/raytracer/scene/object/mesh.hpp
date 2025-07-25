@@ -43,25 +43,24 @@ struct mesh_object {
 	}
     }
 
-    template <bool backface_culling>
+    template <bool backface_culling, F eps>
     constexpr std::optional<mesh_hit<F>> intersect(const ray3<F>& ray) const {
 	std::optional<mesh_hit<F>> closest_hit;
 
 	for(const auto& [triangle_idx, triangle] : triangles | std::ranges::views::enumerate) {
-	    auto maybe_hit = triangle.template intersect<backface_culling>(ray);
+	    const auto maybe_hit = triangle.template intersect<backface_culling, eps>(ray);
 
 	    if (!maybe_hit || (closest_hit && closest_hit->distance < maybe_hit->distance)) {
 		continue;
 	    }
 
-	    vec3<F> v0_normal = vertex_normals[triangle.vertex_indices[0]];
-	    vec3<F> v1_normal = vertex_normals[triangle.vertex_indices[1]];
-	    vec3<F> v2_normal = vertex_normals[triangle.vertex_indices[2]];
-	    vec3<F> hit_position = ray.origin + (maybe_hit->distance * ray.direction);
-	    vec3<F> hit_normal = maybe_hit->u * v1_normal + maybe_hit->v * v2_normal + (static_cast<F>(1.) - maybe_hit->u - maybe_hit->v) * v0_normal;
+	    const vec3<F> v0_normal = vertex_normals[triangle.vertex_indices[0]];
+	    const vec3<F> v1_normal = vertex_normals[triangle.vertex_indices[1]];
+	    const vec3<F> v2_normal = vertex_normals[triangle.vertex_indices[2]];
+	    const vec3<F> hit_position = ray.origin + (maybe_hit->distance * ray.direction);
+	    const vec3<F> hit_normal = maybe_hit->u * v1_normal + maybe_hit->v * v2_normal + (static_cast<F>(1.) - maybe_hit->u - maybe_hit->v) * v0_normal;
 
 	    closest_hit = mesh_hit<F>{
-		ray,
 		hit_position,
 		hit_normal,
 		triangle.normal,

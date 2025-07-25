@@ -7,8 +7,7 @@
 #include <raytracer/core/math/aabb3.hpp>
 #include <raytracer/scene/primitive/hit.hpp>
 
-template <typename F,
-	  F eps = static_cast<F>(1e-6)>
+template <typename F>
 struct triangle {
     vec3<F> v0, v1, v2;
     vec3<F> e1, e2;
@@ -30,7 +29,7 @@ struct triangle {
 	box.expand(v2);
     }
 
-    template <bool backface_culling>
+    template <bool backface_culling, F eps>
     constexpr std::optional<triangle_hit<F>> intersect(const ray3<F>& ray) const noexcept {
 	const vec3<F> pvec = cross(ray.direction, e2);
 	const F det = dot(e1, pvec);

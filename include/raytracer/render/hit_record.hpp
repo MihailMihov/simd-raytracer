@@ -7,7 +7,7 @@
 #include <raytracer/core/math/vec3.hpp>
 
 template <typename F>
-struct scene_hit {
+struct hit {
     ray3<F> ray;
     vec3<F> position;
     vec3<F> hit_normal;
@@ -17,5 +17,5 @@ struct scene_hit {
     F u;
     F v;
     F w;
-    std::size_t object_idx;
+    std::size_t mesh_idx;
 };

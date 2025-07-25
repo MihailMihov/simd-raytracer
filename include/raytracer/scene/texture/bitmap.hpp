@@ -43,7 +43,7 @@ struct bitmap_texture {
     bitmap_texture(const std::string& file_path)
 	: texture(load_bitmap<F>(file_path)) {}
 
-    constexpr color<F> sample(const scene_hit<F>& hit, const vec3<vec2<F>>& uvs) const {
+    constexpr color<F> sample(const hit<F>& hit, const vec3<vec2<F>>& uvs) const {
 	F hit_u = hit.u;
 	F hit_v = hit.v;
 	F hit_w = 1. - hit_u - hit_v;

@@ -52,17 +52,17 @@ int main(int argc, char **argv) {
 
     const std::filesystem::path& scene_file_path = argv[1];
 
-    using float_t = float;
+    using float_t = double;
 
-    constexpr float_t eps = static_cast<float_t>(1e-6);
+    constexpr float_t eps = static_cast<float_t>(1e-8);
 
-    using accel_t = list_accel<float_t, eps>;
+    using accel_t = kd_tree_simd_accel<float_t, eps>;
 
     const auto scene = parse_scene_file<float_t>(scene_file_path);
 
     auto accelerator = accel_t(std::make_shared<decltype(scene)>(scene));
 
-    render_still<decltype(accelerator), float_t>(std::move(accelerator));
+    render_still<decltype(accelerator), float_t>(accelerator);
 
     return 0;
 }

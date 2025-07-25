@@ -8,7 +8,6 @@
 
 template <typename F>
 struct mesh_hit {
-    ray3<F> ray;
     vec3<F> position;
     vec3<F> hit_normal;
     vec3<F> face_normal;

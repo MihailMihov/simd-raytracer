@@ -8,7 +8,7 @@ template <typename F>
 struct albedo_texture {
     color<F> albedo;
 
-    constexpr color<F> sample([[maybe_unused]] const scene_hit<F>& hit_record, [[maybe_unused]] const vec3<vec2<F>>& uvs) const {
+    constexpr color<F> sample([[maybe_unused]] const hit<F>& hit_record, [[maybe_unused]] const vec3<vec2<F>>& uvs) const {
 	return albedo;
     }
 };

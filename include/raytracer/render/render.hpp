@@ -13,10 +13,10 @@
 #include <raytracer/render/tile/region.hpp>
 #include <raytracer/render/tile/bucket.hpp>
 
-constexpr double shadow_bias = 1e-4;
-constexpr double reflection_bias = 1e-4;
-constexpr double refraction_bias = 1e-4;
-constexpr int max_ray_depth = 4;
+constexpr double shadow_bias = 1e-5;
+constexpr double reflection_bias = 1e-5;
+constexpr double refraction_bias = 1e-5;
+constexpr int max_ray_depth = 6;
 
 template <typename A, typename F>
 constexpr image<F> render_frame(const A& accel, const scheduling_type threading)
@@ -43,6 +43,9 @@ requires accelerator<A, F> {
 		F screen_y = static_cast<F>(1.) - (static_cast<F>(2.) * ndc_y);
 
 		screen_x *= aspect_ratio;
+
+		screen_x *= std::tan(std::numbers::pi_v<F> / static_cast<F>(4.));
+		screen_y *= std::tan(std::numbers::pi_v<F> / static_cast<F>(4.));
 
 		vec3<F> direction{screen_x, screen_y, static_cast<F>(-1.)};
 		direction = normalized(transpose(camera.matrix) * direction);
@@ -95,27 +98,27 @@ requires accelerator<A, F> {
     const auto& scene = *accel.scene_ptr;
 
     while (static_cast<F>(0.) < max_t) {
-	const auto hit = accel.template intersect<false>(ray);
+	const auto maybe_hit = accel.template intersect<false>(ray);
 
-	if (!hit.has_value() || max_t < hit->distance) {
+	if (!maybe_hit.has_value() || max_t < maybe_hit->distance) {
 	    return false;
 	}
 
-	const auto& material = scene.materials[scene.meshes[hit->object_idx].material_idx];
+	const auto& material = scene.materials[scene.meshes[maybe_hit->mesh_idx].material_idx];
 
 	if (!is_transmissive(material)) {
 	    return true;
 	}
 
-	ray.origin = hit->position + (static_cast<F>(shadow_bias) * ray.direction);
-	max_t -= hit->distance;
+	ray.origin = maybe_hit->position + (static_cast<F>(shadow_bias) * ray.direction);
+	max_t -= maybe_hit->distance;
     }
 
     return false;
 }
 
 template <typename A, typename F>
-constexpr color<F> color_hit(const A& accel, const scene_hit<F>& hit_record, const std::size_t ray_depth)
+constexpr color<F> color_hit(const A& accel, const hit<F>& hit_record, const std::size_t ray_depth)
 requires accelerator<A, F> {
     const auto& scene = *accel.scene_ptr;
 
@@ -176,10 +179,10 @@ requires accelerator<A, F> {
 	    vec3<F> n = normalized(material.smooth_shading ? hit_normal : face_normal);
 	    vec3<F> i = normalized(incoming_ray.direction);
 
-	    F eta_i = 1.;
+	    F eta_i = static_cast<F>(1.);
 	    F eta_r = material.ior;
 
-	    if(dot(i, n) > 0) {
+	    if(static_cast<F>(0.) < dot(i, n)) {
 		std::swap(eta_i, eta_r);
 		n = -n;
 	    }
@@ -211,7 +214,7 @@ requires accelerator<A, F> {
 		refraction_color = color_hit(accel, refraction_hit.value(), ray_depth + 1);
 	    }
 
-	    const vec3<F> reflection_direction = i - 2 * dot(i, n) * n;
+	    const vec3<F> reflection_direction = i - static_cast<F>(2.) * dot(i, n) * n;
 	    const ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
 	    const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
@@ -220,8 +223,8 @@ requires accelerator<A, F> {
 		reflection_color = color_hit(accel, reflection_hit.value(), ray_depth + 1);
 	    }
 
-	    const F fresnel = 0.5 * std::pow(1.0 + dot(i, n), 5);
-	    return fresnel * reflection_color + (1 - fresnel) * refraction_color;
+	    const F fresnel = 0.5 * std::pow(static_cast<F>(1.) + dot(i, n), 5);
+	    return fresnel * reflection_color + (static_cast<F>(1.) - fresnel) * refraction_color;
 	} else if constexpr (std::same_as<M, constant_material<F>>) {
 	    return material.albedo;
 	}

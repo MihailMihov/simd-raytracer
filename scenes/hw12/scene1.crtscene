@@ -58,7 +58,7 @@
 		},{
 			"name": "Dragon texture",
 			"type": "bitmap",
-			"file_path": "textures/dragon.jpg"
+			"file_path": "scenes/hw12/textures/dragon.jpg"
 		}		
 	],
 	
