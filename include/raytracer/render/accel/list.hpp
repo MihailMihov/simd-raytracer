@@ -7,7 +7,7 @@
 #include <raytracer/core/math/aabb3.hpp>
 #include <raytracer/scene/scene.hpp>
 
-template <typename F>
+template <typename F, F eps>
 struct list_accel {
     std::shared_ptr<const scene<F>> scene_ptr;
     aabb3<F> root_box;
@@ -19,8 +19,8 @@ struct list_accel {
     }
 
     template <bool backface_culling>
-    constexpr std::optional<hit_record<F>> intersect(const ray3<F>& ray) const {
-	std::optional<hit_record<F>> closest_hit;
+    constexpr std::optional<scene_hit<F>> intersect(const ray3<F>& ray) const {
+	std::optional<scene_hit<F>> closest_hit;
 
 	for(const auto& [mesh_idx, mesh] : scene_ptr->meshes | std::ranges::views::enumerate) {
 	    if (!root_box.intersect(ray)) {
@@ -30,15 +30,20 @@ struct list_accel {
 	    auto maybe_hit = mesh.template intersect<backface_culling>(ray);
 
 	    if (maybe_hit && (!closest_hit || maybe_hit->distance < closest_hit->distance)) {
-		closest_hit = hit_record<F>{
-		    maybe_hit->ray,
+		const F u = maybe_hit->u;
+		const F v = maybe_hit->v;
+		const F w = static_cast<F>(1.) - u - v;
+
+		closest_hit = scene_hit<F>{
+		    ray,
 		    maybe_hit->position,
 		    maybe_hit->hit_normal,
 		    maybe_hit->face_normal,
 		    maybe_hit->uvs,
 		    maybe_hit->distance,
-		    maybe_hit->u,
-		    maybe_hit->v,
+		    u,
+		    v,
+		    w,
 		    static_cast<std::size_t>(mesh_idx)
 		};
 	    }

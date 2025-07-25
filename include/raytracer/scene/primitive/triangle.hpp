@@ -20,7 +20,7 @@ struct triangle {
 
     constexpr triangle(const vec3<F>& v0, const vec3<F>& v1, const vec3<F>& v2, const std::array<std::size_t, 3>& vertex_indices, const std::size_t mesh_idx, const vec3<vec2<F>>& uvs)
 	: v0(v0), v1(v1), v2(v2), vertex_indices(vertex_indices), mesh_idx(mesh_idx), uvs(uvs) {
-	normal = norm(cross(v1 - v0, v2 - v0));
+	normal = normalized(cross(v1 - v0, v2 - v0));
 
 	e1 = v1 - v0;
 	e2 = v2 - v0;
@@ -64,8 +64,6 @@ struct triangle {
 	    return std::nullopt;
 	}
 
-	const vec3<F> hit_position = ray.origin + (dist * ray.direction);
-
-	return {dist, u, v};
+	return {{dist, u, v}};
     }
 };

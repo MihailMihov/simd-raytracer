@@ -10,7 +10,10 @@
 constexpr std::size_t max_depth = 8;
 constexpr std::size_t max_primitive_count = 16;
 
-template <typename F>
+template <typename F,
+	  F eps,
+	  std::size_t max_depth = 8,
+	  std::size_t max_primitive_count = 16>
 struct kd_tree_accel {
     struct kd_tree_node {
 	aabb3<F> box;
@@ -26,7 +29,8 @@ struct kd_tree_accel {
     std::vector<kd_tree_node> tree;
     std::vector<std::size_t> leaf_indices;
 
-    kd_tree_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
+    constexpr kd_tree_accel(std::shared_ptr<const scene<F>> scene_ptr) noexcept
+	: scene_ptr(std::move(scene_ptr)) {
 	aabb3<F> root_box;
 	std::vector<std::size_t> triangle_indices;
 	for (const auto& mesh : this->scene_ptr->meshes) {
@@ -104,7 +108,7 @@ struct kd_tree_accel {
 		.value_or(std::numeric_limits<F>::max());
 
 	    auto maybe_box_hit = node.box.intersect(ray, best_t);
-	    if (!maybe_box_hit || best_t <= maybe_box_hit.value()) {
+	    if (!maybe_box_hit || best_t <= maybe_box_hit->t_min) {
 		continue;
 	    }
 
@@ -129,19 +133,24 @@ struct kd_tree_accel {
 			const auto& v1_normal = mesh.vertex_normals[triangle.vertex_indices[1]];
 			const auto& v2_normal = mesh.vertex_normals[triangle.vertex_indices[2]];
 
-			const vec3<F> hit_normal = maybe_hit->u * v1_normal + maybe_hit->v * v2_normal + maybe_hit->w * v0_normal;
+			const F u = maybe_hit->u;
+			const F v = maybe_hit->v;
+			const F w = static_cast<F>(1.) - u - v;
+			const vec3<F> hit_normal = u * v1_normal + v * v2_normal + w * v0_normal;
+
+			const vec3<F> hit_position = ray.origin + (maybe_hit->distance * ray.direction);
 
 			closest_hit = scene_hit<F>{
-			    maybe_hit->ray,
-			    maybe_hit->position,
+			    ray,
+			    hit_position,
 			    hit_normal,
 			    triangle.normal,
 			    triangle.uvs,
 			    maybe_hit->distance,
-			    maybe_hit->u,
-			    maybe_hit->v,
-			    maybe_hit->w,
-			    static_cast<std::size_t>(triangle.mesh_idx),
+			    u,
+			    v,
+			    w,
+			    triangle.mesh_idx
 			};
 		    }
 		}

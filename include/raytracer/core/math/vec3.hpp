@@ -89,13 +89,6 @@ struct vec3 {
     [[nodiscard]] constexpr F len() const noexcept {
 	return std::sqrt(len_squared());
     }
-
-    constexpr void normalize() {
-	const F inv_length = static_cast<F>(1.) / len();
-	x *= inv_length;
-	y *= inv_length;
-	z *= inv_length;
-    }
 };
 
 template <typename F>
@@ -109,9 +102,18 @@ template <typename F>
 }
 
 template <typename F>
-[[nodiscard]] constexpr vec3<F> norm(const vec3<F>& v) {
+[[nodiscard]] constexpr vec3<F> normalized(const vec3<F>& v) noexcept {
     const F inv_length = static_cast<F>(1.) / v.len();
     return {v.x * inv_length, v.y * inv_length, v.z * inv_length};
+}
+
+template <typename F>
+[[nodiscard]] constexpr vec3<F> normalized(vec3<F>&& v) noexcept {
+    const F inv_length = static_cast<F>(1.) / v.len();
+    v.x *= inv_length;
+    v.y *= inv_length;
+    v.z *= inv_length;
+    return std::move(v);
 }
 
 template <typename F>

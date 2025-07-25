@@ -31,8 +31,7 @@ struct mesh_object {
 	    box.expand(triangle.v1);
 	    box.expand(triangle.v2);
 
-	    triangle_normals[idx] = cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0);
-	    triangle_normals[idx].normalize();
+	    triangle_normals[idx] = normalized(cross(triangle.v1 - triangle.v0, triangle.v2 - triangle.v0));
 
 	    vertex_normals[v0_idx] += triangle_normals[idx];
 	    vertex_normals[v1_idx] += triangle_normals[idx];
@@ -40,7 +39,7 @@ struct mesh_object {
 	}
 
 	for(auto& vn : vertex_normals) {
-	    vn.normalize();
+	    vn = normalized(vn);
 	}
     }
 
@@ -59,9 +58,19 @@ struct mesh_object {
 	    vec3<F> v1_normal = vertex_normals[triangle.vertex_indices[1]];
 	    vec3<F> v2_normal = vertex_normals[triangle.vertex_indices[2]];
 	    vec3<F> hit_position = ray.origin + (maybe_hit->distance * ray.direction);
-	    vec3<F> hit_normal = v1_normal * maybe_hit->u + v2_normal * maybe_hit->v + v0_normal * (1 - maybe_hit->u - maybe_hit->v);
+	    vec3<F> hit_normal = maybe_hit->u * v1_normal + maybe_hit->v * v2_normal + (static_cast<F>(1.) - maybe_hit->u - maybe_hit->v) * v0_normal;
 
-	    closest_hit = mesh_hit<F>{ray, hit_position, hit_normal, triangle.normal, triangle.uvs, maybe_hit->distance, maybe_hit->u, maybe_hit->v, triangle_idx};
+	    closest_hit = mesh_hit<F>{
+		ray,
+		hit_position,
+		hit_normal,
+		triangle.normal,
+		triangle.uvs,
+		maybe_hit->distance,
+		maybe_hit->u,
+		maybe_hit->v,
+		static_cast<std::size_t>(triangle_idx)
+	    };
 	}
 
 	return closest_hit;

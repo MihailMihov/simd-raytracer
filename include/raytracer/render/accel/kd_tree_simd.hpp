@@ -13,7 +13,7 @@
 namespace stdx = std::experimental;
 
 template <typename F, std::size_t W>
-struct triangle_pack {
+struct triangle_packet {
     using simd_f = stdx::fixed_size_simd<F, W>;
     using simd_f_mask = simd_f::mask_type;
     
@@ -61,7 +61,7 @@ struct triangle_pack {
 };
 
 template <typename F,
-	  F eps = static_cast<F>(1e-6),
+	  F eps,
 	  std::size_t max_depth = 8,
 	  std::size_t max_leaf_size = 64,
 	  std::size_t W = stdx::native_simd<F>::size()>
@@ -86,15 +86,15 @@ struct kd_tree_simd_accel {
     std::shared_ptr<const scene<F>> scene_ptr;
     std::vector<triangle<F>> triangles;
     std::vector<node> tree;
-    std::vector<triangle_pack<F, W>> triangle_packs;
+    std::vector<triangle_packet<F, W>> triangle_packs;
 
-    kd_tree_simd_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
+    constexpr kd_tree_simd_accel(std::shared_ptr<const scene<F>> scene_ptr) : scene_ptr(std::move(scene_ptr)) {
 	aabb3<F> root_box;
 	std::vector<std::size_t> triangle_indices;
 	for (const auto& mesh : this->scene_ptr->meshes) {
 	    root_box.unite(mesh.box);
 
-	    std::size_t start_idx = triangles.size();
+	    const std::size_t start_idx = triangles.size();
 	    triangles.insert(triangles.end(), mesh.triangles.begin(), mesh.triangles.end());
 	    for (std::size_t i = 0; i < mesh.triangles.size(); ++i) {
 		triangle_indices.push_back(start_idx + i);
@@ -109,7 +109,7 @@ struct kd_tree_simd_accel {
 	const std::size_t first_pack = triangle_packs.size();
 	
 	for (std::size_t i = 0; i < triangle_indices.size(); i += W) {
-	    triangle_pack<F, W> pack{};
+	    triangle_packet<F, W> pack{};
 	    for (std::size_t lane = 0; lane < W; ++lane) {
 		const std::size_t triangle_idx = triangle_indices[std::min(i + lane, triangle_indices.size() - 1)];
 
@@ -176,7 +176,7 @@ struct kd_tree_simd_accel {
     }
 
     template <bool backface_culling>
-    constexpr std::optional<scene_hit<F>> intersect(const ray3<F>& ray) const {
+    [[nodiscard]] constexpr std::optional<scene_hit<F>> intersect(const ray3<F>& ray) const noexcept {
 	F best_t = MAX_F;
 	F best_u = MAX_F;
 	F best_v = MAX_F;
@@ -252,7 +252,7 @@ struct kd_tree_simd_accel {
 
 	const auto& mesh = scene_ptr->meshes[mesh_idx];
 
-	const vec3<F> hit_normal = norm(best_u * mesh.vertex_normals[v1_idx] + best_v * mesh.vertex_normals[v2_idx] + w * mesh.vertex_normals[v0_idx]);
+	const vec3<F> hit_normal = normalized(best_u * mesh.vertex_normals[v1_idx] + best_v * mesh.vertex_normals[v2_idx] + w * mesh.vertex_normals[v0_idx]);
 
 	return scene_hit<F>{
 	    ray,

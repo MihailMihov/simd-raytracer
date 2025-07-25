@@ -3,11 +3,10 @@
 #include <thread>
 #include <future>
 
-#include "raytracer/render/accel/accel.hpp"
-#include <raytracer/render/accel/kd_tree.hpp>
 #include <raytracer/scene/scene.hpp>
 #include <raytracer/scene/material/material_queries.hpp>
 #include <raytracer/scene/texture/texture_queries.hpp>
+#include <raytracer/render/accel/accel.hpp>
 #include <raytracer/render/tile/tile.hpp>
 #include <raytracer/render/tile/queue.hpp>
 #include <raytracer/render/tile/single.hpp>
@@ -46,7 +45,7 @@ requires accelerator<A, F> {
 		screen_x *= aspect_ratio;
 
 		vec3<F> direction{screen_x, screen_y, static_cast<F>(-1.)};
-		direction = norm(transpose(camera.matrix) * direction);
+		direction = normalized(transpose(camera.matrix) * direction);
 
 		ray3<F> ray(camera.position, direction);
 
@@ -95,7 +94,7 @@ constexpr auto is_occluded(const A& accel, ray3<F> ray, F max_t)
 requires accelerator<A, F> {
     const auto& scene = *accel.scene_ptr;
 
-    while (0 < max_t) {
+    while (static_cast<F>(0.) < max_t) {
 	const auto hit = accel.template intersect<false>(ray);
 
 	if (!hit.has_value() || max_t < hit->distance) {
@@ -118,82 +117,80 @@ requires accelerator<A, F> {
 template <typename A, typename F>
 constexpr color<F> color_hit(const A& accel, const scene_hit<F>& hit_record, const std::size_t ray_depth)
 requires accelerator<A, F> {
-    const scene<F>& scene = *accel.scene_ptr;
+    const auto& scene = *accel.scene_ptr;
 
-    if(ray_depth == max_ray_depth)
+    if (ray_depth == max_ray_depth)
 	return scene.config.background_color;
 
     auto [incoming_ray, hit_position, hit_normal, face_normal, uvs, hit_distance, u, v, w, mesh_idx] = hit_record;
 
-    const auto& object = scene.meshes[mesh_idx];
-    const auto& material = scene.materials[object.material_idx];
+    const auto& mesh = scene.meshes[mesh_idx];
+    const auto& material_variant = scene.materials[mesh.material_idx];
 
-    return std::visit([&](const auto& m) -> color<F> {
-	using M = std::decay_t<decltype(m)>;
+    return std::visit([&](const auto& material) -> color<F> {
+	using M = std::decay_t<decltype(material)>;
 
 	if constexpr (std::same_as<M, diffuse_material<F>> || std::same_as<M, texture_material<F>>) {
-	    color<F> final_color(0., 0., 0.);
+	    color<F> final_color{static_cast<F>(0.), static_cast<F>(0.), static_cast<F>(0.)};
 	    for (const auto& light : scene.lights) {
-		vec3<F> light_position = light.position;
+		const vec3<F> light_position = light.position;
 		vec3<F> light_direction = light_position - hit_position;
 
-		F sphere_radius = light_direction.len();
-		F sphere_area = 4. * std::numbers::pi_v<F> * sphere_radius * sphere_radius;
+		const F sphere_radius = light_direction.len();
+		const F sphere_area = 4. * std::numbers::pi_v<F> * sphere_radius * sphere_radius;
 
-		light_direction.normalize();
+		light_direction = normalized(light_direction);
 
 		F cosine_law;
-		if(m.smooth_shading) {
+		if (material.smooth_shading) {
 		    cosine_law = std::max(static_cast<F>(0.), dot(light_direction, hit_normal));
 		} else {
 		    cosine_law = std::max(static_cast<F>(0.), dot(light_direction, face_normal));
 		}
 
-		ray3<F> shadow_ray(hit_position + (static_cast<F>(shadow_bias) * light_direction), light_direction);
-		if(is_occluded(accel, shadow_ray, sphere_radius))
+		const ray3<F> shadow_ray(hit_position + (static_cast<F>(shadow_bias) * light_direction), light_direction);
+		if (is_occluded(accel, shadow_ray, sphere_radius))
 		    continue;
 
 		if constexpr (std::same_as<M, diffuse_material<F>>) {
-		    final_color = final_color + color<F>(m.albedo * ((light.intensity / sphere_area) * cosine_law));
+		    final_color = final_color + color<F>(material.albedo * ((light.intensity / sphere_area) * cosine_law));
 		} else {
-		    const auto& texture_variant = scene.textures.at(m.texture);
+		    const auto& texture_variant = scene.textures.at(material.texture);
 		    final_color = final_color + color<F>(sample(texture_variant, hit_record, uvs) * ((light.intensity / sphere_area) * cosine_law));
 		}
 	    }
 
 	    return final_color;
 	} else if constexpr (std::same_as<M, reflective_material<F>>) {
-	    vec3<F> reflection_direction = incoming_ray.direction - (static_cast<F>(2.) * dot(incoming_ray.direction, hit_normal) * hit_normal);
-	    vec3<F> reflection_origin = hit_position + (static_cast<F>(reflection_bias) * reflection_direction);
-	    ray3<F> reflection_ray(reflection_origin, reflection_direction);
+	    const vec3<F> reflection_direction = incoming_ray.direction - (static_cast<F>(2.) * dot(incoming_ray.direction, hit_normal) * hit_normal);
+	    const vec3<F> reflection_origin = hit_position + (static_cast<F>(reflection_bias) * reflection_direction);
+	    const ray3<F> reflection_ray(reflection_origin, reflection_direction);
 
-	    auto reflection_hit = accel.template intersect<false>(reflection_ray);
+	    const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
 	    if(!reflection_hit.has_value())
 		return scene.config.background_color;
 
 	    return color_hit(accel, reflection_hit.value(), ray_depth + 1);	
 	} else if constexpr (std::same_as<M, refractive_material<F>>) {
-	    vec3<F> n = m.smooth_shading ? hit_normal : face_normal;
-	    n.normalize();
-	    vec3<F> i = incoming_ray.direction;
-	    i.normalize();
+	    vec3<F> n = normalized(material.smooth_shading ? hit_normal : face_normal);
+	    vec3<F> i = normalized(incoming_ray.direction);
 
 	    F eta_i = 1.;
-	    F eta_r = m.ior;
+	    F eta_r = material.ior;
 
 	    if(dot(i, n) > 0) {
 		std::swap(eta_i, eta_r);
 		n = -n;
 	    }
 
-	    F cos_i_n = -dot(i, n);
-	    F sin_i_n = std::sqrt(static_cast<F>(1.) - cos_i_n * cos_i_n);
+	    const F cos_i_n = -dot(i, n);
+	    const F sin_i_n = std::sqrt(static_cast<F>(1.) - cos_i_n * cos_i_n);
 
 	    if(eta_r / eta_i < sin_i_n) {
-		vec3<F> reflection_direction = i - static_cast<F>(2.) * dot(i, n) * n;
-		ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
-		auto reflection_hit = accel.template intersect<false>(reflection_ray);
+		const vec3<F> reflection_direction = i - static_cast<F>(2.) * dot(i, n) * n;
+		const ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
+		const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
 		if(!reflection_hit.has_value())
 		    return color<F>{};
@@ -201,36 +198,36 @@ requires accelerator<A, F> {
 		return color_hit(accel, reflection_hit.value(), ray_depth + 1);	
 	    }
 
-	    F sin_r_mn = ((sin_i_n * eta_i) / eta_r);
-	    F cos_r_mn = std::sqrt(1 - sin_r_mn * sin_r_mn);
+	    const F sin_r_mn = ((sin_i_n * eta_i) / eta_r);
+	    const F cos_r_mn = std::sqrt(static_cast<F>(1.) - sin_r_mn * sin_r_mn);
 
-	    vec3<F> r = (cos_r_mn * (-n)) + sin_r_mn * norm(i + (cos_i_n * n));
+	    const vec3<F> r = (cos_r_mn * (-n)) + sin_r_mn * normalized(i + (cos_i_n * n));
 
-	    ray3<F> refraction_ray(hit_position + (static_cast<F>(refraction_bias) * r), r);
-	    auto refraction_hit = accel.template intersect<false>(refraction_ray);
+	    const ray3<F> refraction_ray(hit_position + (static_cast<F>(refraction_bias) * r), r);
+	    const auto refraction_hit = accel.template intersect<false>(refraction_ray);
 
 	    color<F> refraction_color = color<F>{};
 	    if(refraction_hit.has_value()) {
 		refraction_color = color_hit(accel, refraction_hit.value(), ray_depth + 1);
 	    }
 
-	    vec3<F> reflection_direction = i - 2 * dot(i, n) * n;
-	    ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
-	    auto reflection_hit = accel.template intersect<false>(reflection_ray);
+	    const vec3<F> reflection_direction = i - 2 * dot(i, n) * n;
+	    const ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
+	    const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
-	    color<F> reflection_color = color<F>{};
+	    auto reflection_color = color<F>{};
 	    if(reflection_hit.has_value()) {
 		reflection_color = color_hit(accel, reflection_hit.value(), ray_depth + 1);
 	    }
 
-	    F fresnel = 0.5 * std::pow(1.0 + dot(i, n), 5);
+	    const F fresnel = 0.5 * std::pow(1.0 + dot(i, n), 5);
 	    return fresnel * reflection_color + (1 - fresnel) * refraction_color;
 	} else if constexpr (std::same_as<M, constant_material<F>>) {
-	    return m.albedo;
+	    return material.albedo;
 	}
 
 	throw std::logic_error("unknown material");
 	return color<F>{};
-    }, material);
+    }, material_variant);
 }
 

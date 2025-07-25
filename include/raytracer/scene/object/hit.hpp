@@ -16,5 +16,5 @@ struct mesh_hit {
     F distance;
     F u;
     F v;
-    std::size_t primitive_idx;
+    std::size_t triangle_idx;
 };
