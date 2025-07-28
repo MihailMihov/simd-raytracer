@@ -1,7 +1,8 @@
 #pragma once
 
-#include "raytracer/scene/material/material.hpp"
 #include <variant>
+
+#include <raytracer/scene/material/material.hpp>
 
 template <typename F>
 constexpr bool smooth_shading_of(const material_variant<F>& mv) {

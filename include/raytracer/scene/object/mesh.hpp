@@ -4,9 +4,9 @@
 #include <optional>
 #include <vector>
 
-#include "raytracer/core/math/aabb3.hpp"
-#include "raytracer/core/math/vec2.hpp"
-#include "raytracer/scene/object/hit.hpp"
+#include <raytracer/core/math/aabb3.hpp>
+#include <raytracer/core/math/vec2.hpp>
+#include <raytracer/scene/object/hit.hpp>
 #include <raytracer/core/math/vec3.hpp>
 #include <raytracer/scene/primitive/triangle.hpp>
 
