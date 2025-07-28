@@ -3,29 +3,12 @@
 #include <print>
 #include <iostream>
 
+#include <raytracer/config.hpp>
 #include <raytracer/io/image/ppm.hpp>
 #include <raytracer/io/json/loader.hpp>
 #include <raytracer/scene/scene.hpp>
 #include <raytracer/render/render.hpp>
 #include <raytracer/render/accel/kd_tree_simd.hpp>
-
-constexpr std::size_t total_frames = 200;
-
-template <typename A, typename F>
-void render_build_up_video(const A& accel)
-requires accelerator<A, F> {
-    for (std::size_t frame = 1; frame <= total_frames; ++frame) {
-	std::print("\rGenerating frame {} out of {}...", frame, total_frames);
-	std::flush(std::cout);
-
-	auto image = render_frame<A, F>(accel, scheduling_type::BUCKET_TILES);
-
-	std::ofstream output_file_stream(std::format("output/frame_{:04d}.ppm", frame), std::ios::out | std::ios::binary);
-	write_ppm(image, output_file_stream);
-    }
-
-    std::println("");
-}
 
 template <typename A, typename F>
 void render_still(const A& accel)
@@ -50,13 +33,10 @@ int main(int argc, char **argv) {
 
     const std::filesystem::path& scene_file_path = argv[1];
 
-    using float_t = float;
+    using F = float;
+    using accel_t = kd_tree_simd_accel<float_t, static_cast<F>(epsilon)>;
 
-    constexpr float_t eps = static_cast<float_t>(1e-6);
-
-    using accel_t = kd_tree_simd_accel<float_t, eps>;
-
-    const auto scene = parse_scene_file<float_t>(scene_file_path);
+    const auto scene = parse_scene_file<F>(scene_file_path);
 
     auto accelerator = accel_t(std::make_shared<decltype(scene)>(scene));
 

@@ -3,6 +3,7 @@
 #include <thread>
 #include <random>
 
+#include <raytracer/config.hpp>
 #include <raytracer/scene/scene.hpp>
 #include <raytracer/scene/material/queries.hpp>
 #include <raytracer/scene/texture/queries.hpp>
@@ -12,17 +13,6 @@
 #include <raytracer/render/tile/single.hpp>
 #include <raytracer/render/tile/region.hpp>
 #include <raytracer/render/tile/bucket.hpp>
-
-constexpr double fov_degrees = 90.;
-constexpr double shadow_bias = 1e-4;
-constexpr double reflection_bias = 1e-4;
-constexpr double refraction_bias = 1e-4;
-
-constexpr std::size_t samples_per_pixel = 1;
-constexpr std::size_t max_ray_depth = 5;
-constexpr std::size_t diffuse_reflection_ray_count = 0;
-
-constexpr std::optional fixed_rng_seed = std::make_optional(42);
 
 template <typename F>
 F urand01() noexcept {
