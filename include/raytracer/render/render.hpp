@@ -14,9 +14,9 @@
 #include <raytracer/render/tile/bucket.hpp>
 
 constexpr double fov_degrees = 90.;
-constexpr double shadow_bias = 1e-5;
-constexpr double reflection_bias = 1e-5;
-constexpr double refraction_bias = 1e-5;
+constexpr double shadow_bias = 1e-4;
+constexpr double reflection_bias = 1e-4;
+constexpr double refraction_bias = 1e-4;
 
 constexpr std::size_t samples_per_pixel = 1;
 constexpr std::size_t max_ray_depth = 5;
