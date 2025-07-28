@@ -34,13 +34,13 @@ int main(int argc, char **argv) {
     const std::filesystem::path& scene_file_path = argv[1];
 
     using F = float;
-    using accel_t = kd_tree_simd_accel<float_t, static_cast<F>(epsilon)>;
+    using A = kd_tree_simd_accel<F, static_cast<F>(epsilon)>;
 
     const auto scene = parse_scene_file<F>(scene_file_path);
 
-    auto accelerator = accel_t(std::make_shared<decltype(scene)>(scene));
+    auto accelerator = A(std::make_shared<decltype(scene)>(scene));
 
-    render_still<decltype(accelerator), float_t>(accelerator);
+    render_still<decltype(accelerator), F>(accelerator);
 
     return 0;
 }

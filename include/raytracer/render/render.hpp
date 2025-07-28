@@ -1,7 +1,6 @@
 #pragma once
 
 #include <thread>
-#include <random>
 
 #include <raytracer/config.hpp>
 #include <raytracer/scene/scene.hpp>
@@ -13,27 +12,8 @@
 #include <raytracer/render/tile/single.hpp>
 #include <raytracer/render/tile/region.hpp>
 #include <raytracer/render/tile/bucket.hpp>
-
-template <typename F>
-F urand01() noexcept {
-    const auto get_rng_seed = []{
-	if constexpr (fixed_rng_seed.has_value()) {
-	    return fixed_rng_seed.value();
-	} else {
-	    std::random_device rd;
-	    return rd();
-	}
-    };
-
-    thread_local std::minstd_rand engine(get_rng_seed());
-
-    return std::generate_canonical<F, std::numeric_limits<F>::digits>(engine);
-}
-
-template <typename F>
-constexpr F degrees_to_radians(const F degrees) noexcept {
-    return degrees * (std::numbers::pi_v<F> / static_cast<F>(180.));
-}
+#include <raytracer/utils/rand.hpp>
+#include <raytracer/utils/convert.hpp>
 
 template <typename A, typename F>
 constexpr image<F> render_frame(const A& accel, const scheduling_type threading)
@@ -326,4 +306,3 @@ requires accelerator<A, F> {
 	}
     }, material_variant);
 }
-
