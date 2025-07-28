@@ -8,6 +8,7 @@ algorithm.
 ### Quick links
 
 * [Quick start](#quick-start)
+* [Examples](#examples)
 * [Configuration](#configuration)
 * [Acceleration structures](#acceleration-structures)
 * [Materials](#materials)
@@ -36,6 +37,36 @@ directories need to be changed accordingly.
 [^1]: It is also strongly recommended to add
     `-DCMAKE_CXX_FLAGS="-march=native"` for GCC/Clang or `/arch:AVX2` for MSVC,
     if the machine supports a vector instruction set.
+
+## Examples
+
+The `outputs/` directory features some of the images produces by the raytracer
+with various scenes and options.
+
+The
+`gi_{samples_per_pixel}spp_{max_ray_depth}_{diffuse_reflection_rays_count}.png`
+are all from the `scenes/hw15/scene2.crtscene` scene, which features a box with
+a semi-transparent sphere, a mettalic ball, an opaque cube and an opaque
+cylinder. The sphere's shadows highlight how the diffuse reflections cause even
+transparent objects to cause some kind of shadow and caustics.
+
+The `dragon_slow_load.mp4` shows the dragon from `scenes/hw09/scene5.crtscene`,
+which is diffuse and on top of a reflective material. I also used some ugly
+code to "unmask" 10 triangles per frame (which was removed in some cleanup) and
+then I stitched the frames together with `ffmpeg`. It took ~4 minutes to render
+then, but now on the latest version a single frame is rendered in <100ms, even
+with all triangles.
+
+`refractive_dragon.png` shows the refractive dragon from
+`scenes/hw11/scene8.crtscene`, which is inside a box with differently colored
+walls and shows how the refractions pick up different colors.
+
+`textures.png` shows `scenes/hw12/scene4.crtscene` which highlights all the
+different types of textures (albedo, edge, checker and bitmap).
+
+As the raytracer only supports `.ppm`, `ffmpeg -i image.ppm output.png` can be
+used to convert the PPM files to the superior PNG file format, if they should
+be stored in git or sent anywhere.
 
 ## Configuration
 
