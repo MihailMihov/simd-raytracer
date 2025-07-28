@@ -22,7 +22,7 @@ struct list_accel {
     constexpr std::optional<hit<F>> intersect(const ray3<F>& ray) const {
 	std::optional<hit<F>> closest_hit;
 
-	for(const auto& [mesh_idx, mesh] : scene_ptr->meshes | std::ranges::views::enumerate) {
+	for (const auto& [mesh_idx, mesh] : scene_ptr->meshes | std::ranges::views::enumerate) {
 	    if (!root_box.intersect(ray)) {
 		continue;
 	    }

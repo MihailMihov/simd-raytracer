@@ -48,3 +48,5 @@ target_include_directories(raytracer
 )
 
 target_link_libraries(raytracer simdjson stb)
+
+set_property(TARGET raytracer PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)

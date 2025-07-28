@@ -1,7 +1,6 @@
 #pragma once
 
 #include <thread>
-#include <future>
 #include <random>
 
 #include <raytracer/scene/scene.hpp>
@@ -19,19 +18,30 @@ constexpr double shadow_bias = 1e-5;
 constexpr double reflection_bias = 1e-5;
 constexpr double refraction_bias = 1e-5;
 
-constexpr std::size_t samples_per_pixel = 64;
+constexpr std::size_t samples_per_pixel = 1;
 constexpr std::size_t max_ray_depth = 5;
-constexpr std::size_t diffuse_reflection_ray_count = 1;
+constexpr std::size_t diffuse_reflection_ray_count = 0;
+
+constexpr std::optional fixed_rng_seed = std::make_optional(42);
 
 template <typename F>
 F urand01() noexcept {
-    thread_local std::minstd_rand engine(42);
+    const auto get_rng_seed = []{
+	if constexpr (fixed_rng_seed.has_value()) {
+	    return fixed_rng_seed.value();
+	} else {
+	    std::random_device rd;
+	    return rd();
+	}
+    };
+
+    thread_local std::minstd_rand engine(get_rng_seed());
 
     return std::generate_canonical<F, std::numeric_limits<F>::digits>(engine);
 }
 
 template <typename F>
-constexpr F degrees_to_radians(const F degrees) {
+constexpr F degrees_to_radians(const F degrees) noexcept {
     return degrees * (std::numbers::pi_v<F> / static_cast<F>(180.));
 }
 
@@ -47,9 +57,9 @@ requires accelerator<A, F> {
     const F aspect_ratio = static_cast<F>(image_width) / image_height;
 
     std::vector<std::vector<color<F>>> pixels(image_height, std::vector<color<F>>(image_width, background_color));
-    auto tile_worker = [&](render_tile tile) {
-	for(std::size_t y = tile.y0; y < tile.y1; ++y) {
-	    for(std::size_t x = tile.x0; x < tile.x1; ++x) {
+    const auto tile_worker = [&](render_tile tile) {
+	for (std::size_t y = tile.y0; y < tile.y1; ++y) {
+	    for (std::size_t x = tile.x0; x < tile.x1; ++x) {
 		color<F> final_color{};
 
 		for (std::size_t s = 0; s < samples_per_pixel; ++s) {
@@ -110,17 +120,18 @@ requires accelerator<A, F> {
 	    break;
     }
 
-    std::vector<std::future<void>> futures;
+    std::vector<std::jthread> threads;
+    threads.reserve(num_threads);
     for (std::size_t t = 0; t < num_threads; ++t) {
-	futures.emplace_back(std::async(std::launch::async, [&] {
+	threads.emplace_back([&] {
 	    while (auto tile = queue.pop()) {
 		tile_worker(*tile);
 	    }
-	}));
+	});
     }
 
-    for (auto& future : futures) {
-	future.get();
+    for (auto& thread : threads) {
+	thread.join();
     }
 
     return {image_height, image_width, std::move(pixels)};
@@ -133,13 +144,11 @@ requires accelerator<A, F> {
 
     while (static_cast<F>(0.) < max_t) {
 	const auto maybe_hit = accel.template intersect<false>(ray);
-
 	if (!maybe_hit.has_value() || max_t < maybe_hit->distance) {
 	    return false;
 	}
 
 	const auto& material = scene.materials[scene.meshes[maybe_hit->mesh_idx].material_idx];
-
 	if (!is_transmissive(material)) {
 	    return true;
 	}
@@ -152,7 +161,7 @@ requires accelerator<A, F> {
 }
 
 template <typename A, typename F>
-constexpr color<F> color_hit(const A& accel, const hit<F>& hit_record, const std::size_t ray_depth)
+constexpr color<F> color_hit(const A& accel, const hit<F>& hit_record, const std::size_t ray_depth) noexcept
 requires accelerator<A, F> {
     const auto& scene = *accel.scene_ptr;
 
@@ -195,8 +204,9 @@ requires accelerator<A, F> {
 
 		const auto diffuse_reflection_hit = accel.template intersect<false>(diffuse_reflection_ray);
 
-		if (!diffuse_reflection_hit.has_value())
+		if (!diffuse_reflection_hit.has_value()) {
 		    continue;
+		}
 
 		final_color += color_hit(accel, diffuse_reflection_hit.value(), ray_depth + 1);
 	    }
@@ -218,13 +228,16 @@ requires accelerator<A, F> {
 		}
 
 		const ray3<F> shadow_ray(hit_position + (static_cast<F>(shadow_bias) * light_direction), light_direction);
-		if (is_occluded(accel, shadow_ray, sphere_radius))
+		if (is_occluded(accel, shadow_ray, sphere_radius)) {
 		    continue;
+		}
 
 		final_color += ((light.intensity / sphere_area) * cosine_law) * material.albedo;
 	    }
 
-	    return final_color / static_cast<F>(diffuse_reflection_ray_count + 1);
+	    final_color /= static_cast<F>(diffuse_reflection_ray_count + 1);
+
+	    return final_color;
 	} else if constexpr (std::same_as<M, texture_material<F>>) {
 	    color<F> final_color{};
 	    for (const auto& light : scene.lights) {
@@ -244,8 +257,9 @@ requires accelerator<A, F> {
 		}
 
 		const ray3<F> shadow_ray(hit_position + (static_cast<F>(shadow_bias) * light_direction), light_direction);
-		if (is_occluded(accel, shadow_ray, sphere_radius))
+		if (is_occluded(accel, shadow_ray, sphere_radius)) {
 		    continue;
+		}
 
 		const auto& texture_variant = scene.textures.at(material.texture);
 		final_color += ((light.intensity / sphere_area) * cosine_law) * sample(texture_variant, hit_record, uvs);
@@ -259,8 +273,9 @@ requires accelerator<A, F> {
 
 	    const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
-	    if (!reflection_hit.has_value())
+	    if (!reflection_hit.has_value()) {
 		return scene.config.background_color;
+	    }
 
 	    return color_hit(accel, reflection_hit.value(), ray_depth + 1);	
 	} else if constexpr (std::same_as<M, refractive_material<F>>) {
@@ -283,8 +298,9 @@ requires accelerator<A, F> {
 		const ray3<F> reflection_ray(hit_position + (static_cast<F>(reflection_bias) * reflection_direction), reflection_direction);
 		const auto reflection_hit = accel.template intersect<false>(reflection_ray);
 
-		if (!reflection_hit.has_value())
+		if (!reflection_hit.has_value()) {
 		    return color<F>{};
+		}
 
 		return color_hit(accel, reflection_hit.value(), ray_depth + 1);	
 	    }
@@ -315,10 +331,9 @@ requires accelerator<A, F> {
 	    return fresnel * reflection_color + (static_cast<F>(1.) - fresnel) * refraction_color;
 	} else if constexpr (std::same_as<M, constant_material<F>>) {
 	    return material.albedo;
+	} else {
+	    return color<F>{};
 	}
-
-	throw std::logic_error("unknown material");
-	return color<F>{};
     }, material_variant);
 }
 

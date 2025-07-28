@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 
     using float_t = float;
 
-    constexpr float_t eps = static_cast<float_t>(1e-6);
+    constexpr float_t eps = static_cast<float_t>(1e-7);
 
     using accel_t = kd_tree_simd_accel<float_t, eps>;
 

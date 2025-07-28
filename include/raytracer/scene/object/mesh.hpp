@@ -24,7 +24,7 @@ struct mesh_object {
 	: material_idx(material_index), vertices(vertices), uvs(uvs), triangles(triangles) {
 	triangle_normals.assign(triangles.size(), vec3<F>({0., 0., 0.}));
 	vertex_normals.assign(vertices.size(), vec3<F>({0., 0., 0.}));
-	for(auto&& [idx, triangle] : triangles | std::views::enumerate) {
+	for (const auto& [idx, triangle] : triangles | std::views::enumerate) {
 	    auto [v0_idx, v1_idx, v2_idx] = triangle.vertex_indices;
 
 	    box.expand(triangle.v0);
@@ -38,7 +38,7 @@ struct mesh_object {
 	    vertex_normals[v2_idx] += triangle_normals[idx];
 	}
 
-	for(auto& vn : vertex_normals) {
+	for (auto& vn : vertex_normals) {
 	    vn = normalized(vn);
 	}
     }
@@ -47,7 +47,7 @@ struct mesh_object {
     constexpr std::optional<mesh_hit<F>> intersect(const ray3<F>& ray) const {
 	std::optional<mesh_hit<F>> closest_hit;
 
-	for(const auto& [triangle_idx, triangle] : triangles | std::ranges::views::enumerate) {
+	for (const auto& [triangle_idx, triangle] : triangles | std::ranges::views::enumerate) {
 	    const auto maybe_hit = triangle.template intersect<backface_culling, eps>(ray);
 
 	    if (!maybe_hit || (closest_hit && closest_hit->distance < maybe_hit->distance)) {

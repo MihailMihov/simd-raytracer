@@ -39,9 +39,9 @@ template <typename F>
 mat3<F> operator*(const mat3<F>& lhs, const mat3<F>& rhs) {
     mat3<F> res{};
 
-    for(int i = 0; i < 3; ++i) {
-	for(int j = 0; j < 3; ++j) {
-	    for(int k = 0; k < 3; ++k) {
+    for (int i = 0; i < 3; ++i) {
+	for (int j = 0; j < 3; ++j) {
+	    for (int k = 0; k < 3; ++k) {
 		res[i, j] += lhs[i, k] * rhs[k, j];
 	    }
 	}

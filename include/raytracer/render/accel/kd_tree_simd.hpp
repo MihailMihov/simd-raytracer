@@ -23,7 +23,7 @@ struct triangle_packet {
     std::array<std::size_t, W> triangle_indices;
 
     template <bool backface_culling, F eps>
-    constexpr simd_f_mask intersect(const ray3<F>& ray, simd_f& u, simd_f& v, simd_f& t) const noexcept {
+    constexpr simd_f_mask intersect(const ray3<F>& ray, simd_f& t, simd_f& u, simd_f& v) const noexcept {
 	const simd_f pvec_x = ray.direction.y * e2z - ray.direction.z * e2y;
 	const simd_f pvec_y = ray.direction.z * e2x - ray.direction.x * e2z;
 	const simd_f pvec_z = ray.direction.x * e2y - ray.direction.y * e2x;
@@ -81,6 +81,15 @@ struct kd_tree_simd_accel {
 
 	std::size_t start_idx;
 	std::size_t pack_count;
+    };
+
+    struct hit_candidate {
+	F t;
+	F u;
+	F v;
+
+	std::size_t pack_idx;
+	std::size_t lane;
     };
 
     std::shared_ptr<const scene<F>> scene_ptr;
@@ -177,11 +186,7 @@ struct kd_tree_simd_accel {
 
     template <bool backface_culling>
     [[nodiscard]] constexpr std::optional<hit<F>> intersect(const ray3<F>& ray) const noexcept {
-	F best_t = MAX_F;
-	F best_u = MAX_F;
-	F best_v = MAX_F;
-	std::size_t best_pack = EMPTY;
-	std::size_t best_lane = EMPTY;
+	std::optional<hit_candidate> closest_hit;
 
 	std::stack<std::size_t, std::vector<std::size_t>> nodes_to_check;
 	nodes_to_check.push(0);
@@ -191,6 +196,8 @@ struct kd_tree_simd_accel {
 	    nodes_to_check.pop();
 
 	    const auto& node = tree[node_idx];
+
+	    const F best_t = closest_hit ? closest_hit->t : MAX_F;
 
 	    auto maybe_box_hit = node.box.intersect(ray);
 	    if (!maybe_box_hit || best_t < maybe_box_hit->t_min) {
@@ -206,43 +213,31 @@ struct kd_tree_simd_accel {
 		    nodes_to_check.push(node.child1);
 		}
 	    } else {
-		for (std::size_t pack_idx = node.start_idx; pack_idx < node.start_idx + node.pack_count; ++pack_idx) {
-		    const auto& pack = triangle_packs[pack_idx];
+		const auto new_hit_candidate = intersect_leaf<backface_culling>(ray, node);
+		
+		if (!new_hit_candidate) {
+		    continue;
+		}
 
-		    simd_f u, v, t;
-		    simd_f_mask mask = pack.template intersect<backface_culling, eps>(ray, u, v, t);
+		const F best_t = closest_hit ? closest_hit->t : MAX_F;
 
-		    if (stdx::none_of(mask)) {
-			continue;
-		    }
-
-		    stdx::where(!mask, t) = best_t;
-
-		    const F t_min = stdx::hmin(t);
-		    if (best_t <= t_min) {
-			continue;
-		    }
-
-		    mask &= (t == t_min);
-
-		    best_pack = pack_idx;
-		    best_lane = stdx::find_first_set(mask);
-		    best_u = u[best_lane];
-		    best_v = v[best_lane];
-		    best_t = t_min;
+		if (new_hit_candidate->t < best_t) {
+		    closest_hit = new_hit_candidate;
 		}
 	    }
 	}
 
-	if (best_t == MAX_F) {
+	if (!closest_hit) {
 	    return std::nullopt;
 	}
 
-	const auto& pack = triangle_packs[best_pack];
+	const auto& pack = triangle_packs[closest_hit->pack_idx];
 
-	const F w = static_cast<F>(1.) - best_u - best_v;
+	const F u = closest_hit->u;
+	const F v = closest_hit->v;
+	const F w = static_cast<F>(1.) - u - v;
 
-	const std::size_t triangle_idx = pack.triangle_indices[best_lane];
+	const std::size_t triangle_idx = pack.triangle_indices[closest_hit->lane];
 	const auto& triangle = triangles[triangle_idx];
 
 	const std::size_t mesh_idx = triangle.mesh_idx;
@@ -252,19 +247,57 @@ struct kd_tree_simd_accel {
 
 	const auto& mesh = scene_ptr->meshes[mesh_idx];
 
-	const vec3<F> hit_normal = normalized(best_u * mesh.vertex_normals[v1_idx] + best_v * mesh.vertex_normals[v2_idx] + w * mesh.vertex_normals[v0_idx]);
+	const vec3<F> hit_normal = normalized(u * mesh.vertex_normals[v1_idx] + v * mesh.vertex_normals[v2_idx] + w * mesh.vertex_normals[v0_idx]);
 
 	return hit<F>{
 	    ray,
-	    ray.origin + (best_t * ray.direction),
+	    ray.origin + (closest_hit->t * ray.direction),
 	    hit_normal,
 	    triangle.normal,
 	    triangle.uvs,
-	    best_t,
-	    best_u,
-	    best_v,
+	    closest_hit->t,
+	    u,
+	    v,
 	    w,
 	    mesh_idx
 	};
+    }
+
+    template <bool backface_culling>
+    [[nodiscard]] constexpr std::optional<hit_candidate> intersect_leaf(const ray3<F>& ray, const node& leaf) const noexcept {
+	std::optional<hit_candidate> closest_hit;
+
+	for (std::size_t pack_idx = leaf.start_idx; pack_idx < leaf.start_idx + leaf.pack_count; ++pack_idx) {
+	    const auto& pack = triangle_packs[pack_idx];
+
+	    simd_f t, u, v;
+	    simd_f_mask mask = pack.template intersect<backface_culling, eps>(ray, t, u, v);
+
+	    if (stdx::none_of(mask)) {
+		continue;
+	    }
+
+	    const F best_t = closest_hit ? closest_hit->t : MAX_F;
+	    stdx::where(!mask, t) = best_t;
+
+	    const F t_min = stdx::hmin(t);
+	    if (best_t <= t_min) {
+		continue;
+	    }
+
+	    mask = (t == t_min);
+
+	    const std::size_t winning_lane = stdx::find_first_set(mask);
+
+	    closest_hit = hit_candidate{
+		t[winning_lane],
+		u[winning_lane],
+		v[winning_lane],
+		pack_idx,
+		winning_lane
+	    };
+	}
+
+	return closest_hit;
     }
 };
