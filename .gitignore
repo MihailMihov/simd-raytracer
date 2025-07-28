@@ -2,7 +2,6 @@ build/
 compile_commands.json
 
 *.ppm
-*.mp4
 
 .cache/
 
