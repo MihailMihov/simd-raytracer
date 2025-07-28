@@ -7,53 +7,53 @@ struct vec2 {
     F x, y;
 
     constexpr vec2<F> operator-() const noexcept {
-	return {-x, -y};
+        return {-x, -y};
     }
 
     constexpr vec2<F>& operator+=(const vec2<F>& other) noexcept {
-	x += other.x;
-	y += other.y;
-	return *this;
+        x += other.x;
+        y += other.y;
+        return *this;
     }
 
     constexpr vec2<F>& operator-=(const vec2<F>& other) noexcept {
-	x -= other.x;
-	y -= other.y;
-	return *this;
+        x -= other.x;
+        y -= other.y;
+        return *this;
     }
 
     constexpr vec2<F>& operator*=(const F scalar) noexcept {
-	x *= scalar;
-	y *= scalar;
-	return *this;
+        x *= scalar;
+        y *= scalar;
+        return *this;
     }
 
     constexpr vec2<F>& operator/=(const F scalar) noexcept {
-	x /= scalar;
-	y /= scalar;
-	return *this;
+        x /= scalar;
+        y /= scalar;
+        return *this;
     }
 
     [[nodiscard]] constexpr vec2<F> operator+(const vec2<F>& rhs) const noexcept {
-	return {x + rhs.x, y + rhs.y};
+        return {x + rhs.x, y + rhs.y};
     }
 
     [[nodiscard]] constexpr vec2<F> operator-(const vec2<F>& rhs) const noexcept {
-	return {x - rhs.x, y - rhs.y};
+        return {x - rhs.x, y - rhs.y};
     }
 
     [[nodiscard]] constexpr F len_squared() const noexcept {
-	return x * x + y * y;
+        return x * x + y * y;
     }
 
     [[nodiscard]] constexpr F len() const noexcept {
-	return std::sqrt(len_squared());
+        return std::sqrt(len_squared());
     }
 
     constexpr void normalize() {
-	const F inv_length = static_cast<F>(1.) / len();
-	x *= inv_length;
-	y *= inv_length;
+        const F inv_length = static_cast<F>(1.) / len();
+        x *= inv_length;
+        y *= inv_length;
     }
 };
 

@@ -19,27 +19,27 @@ F load_f(simdjson::dom::element&& element) {
 template <typename F>
 vec3<F> load_vec3(simdjson::dom::array&& arr) {
     return vec3<F>{
-	load_f<F>(arr.at(0)),
-	load_f<F>(arr.at(1)),
-	load_f<F>(arr.at(2))
+        load_f<F>(arr.at(0)),
+        load_f<F>(arr.at(1)),
+        load_f<F>(arr.at(2))
     };
 }
 
 template <typename F>
 mat3<F> load_mat3(simdjson::dom::array&& arr) {
     return mat3<F>{{
-	load_f<F>(arr.at(0)), load_f<F>(arr.at(1)), load_f<F>(arr.at(2)),
-	load_f<F>(arr.at(3)), load_f<F>(arr.at(4)), load_f<F>(arr.at(5)),
-	load_f<F>(arr.at(6)), load_f<F>(arr.at(7)), load_f<F>(arr.at(8))
+        load_f<F>(arr.at(0)), load_f<F>(arr.at(1)), load_f<F>(arr.at(2)),
+        load_f<F>(arr.at(3)), load_f<F>(arr.at(4)), load_f<F>(arr.at(5)),
+        load_f<F>(arr.at(6)), load_f<F>(arr.at(7)), load_f<F>(arr.at(8))
     }};
 }
 
 template <typename F>
 color<F> load_color(simdjson::dom::array&& arr) {
     return color<F>{
-	load_f<F>(arr.at(0)),
-	load_f<F>(arr.at(1)),
-	load_f<F>(arr.at(2))
+        load_f<F>(arr.at(0)),
+        load_f<F>(arr.at(1)),
+        load_f<F>(arr.at(2))
     };
 }
 
@@ -48,30 +48,30 @@ settings<F> load_settings(simdjson::dom::object&& obj) {
     std::size_t bucket_size = 64;
 
     if (auto bucket_size_json = obj["image_settings"]["bucket_size"].get_uint64(); !bucket_size_json.error()) {
-	bucket_size = bucket_size_json.value();
+        bucket_size = bucket_size_json.value();
     }
 
     return settings<F>{
-	load_color<F>(obj["background_color"]),
-	obj["image_settings"]["height"],
-	obj["image_settings"]["width"],
-	bucket_size
+        load_color<F>(obj["background_color"]),
+        obj["image_settings"]["height"],
+        obj["image_settings"]["width"],
+        bucket_size
     };
 }
 
 template <typename F>
 camera<F> load_camera(simdjson::dom::object&& obj) {
     return camera<F>{
-	load_vec3<F>(obj["position"]),
-	load_mat3<F>(obj["matrix"])
+        load_vec3<F>(obj["position"]),
+        load_mat3<F>(obj["matrix"])
     };
 }
 
 template <typename F>
 light<F> load_light(simdjson::dom::object&& obj) {
     return light<F>{
-	load_vec3<F>(obj["position"]),
-	load_f<F>(obj["intensity"])
+        load_vec3<F>(obj["position"]),
+        load_f<F>(obj["intensity"])
     };
 }
 
@@ -80,28 +80,28 @@ texture_variant<F> load_texture(simdjson::dom::object&& obj) {
     std::string_view type = obj["type"];
 
     if (type == "albedo") {
-	return albedo_texture<F>{
-	    load_color<F>(obj["albedo"])
-	};
+        return albedo_texture<F>{
+            load_color<F>(obj["albedo"])
+        };
     } else if (type == "edges") {
-	return edge_texture<F>{
-	    load_color<F>(obj["edge_color"]),
-	    load_color<F>(obj["inner_color"]),
-	    load_f<F>(obj["edge_width"])
-	};
+        return edge_texture<F>{
+            load_color<F>(obj["edge_color"]),
+            load_color<F>(obj["inner_color"]),
+            load_f<F>(obj["edge_width"])
+        };
     } else if (type == "checker") {
-	return checker_texture<F>{
-	    load_color<F>(obj["color_A"]),
-	    load_color<F>(obj["color_B"]),
-	    load_f<F>(obj["square_size"])
-	};
+        return checker_texture<F>{
+            load_color<F>(obj["color_A"]),
+            load_color<F>(obj["color_B"]),
+            load_f<F>(obj["square_size"])
+        };
     } else if (type == "bitmap") {
-	std::string_view file_path = obj["file_path"];
-	return bitmap_texture<F>{
-	    std::string{file_path}
-	};
+        std::string_view file_path = obj["file_path"];
+        return bitmap_texture<F>{
+            std::string{file_path}
+        };
     } else {
-	throw std::invalid_argument("texture type unknown");
+        throw std::invalid_argument("texture type unknown");
     }
 }
 
@@ -110,39 +110,39 @@ material_variant<F> load_material(simdjson::dom::object&& obj) {
     std::string_view type = obj["type"];
 
     if (type == "diffuse") {
-	simdjson::dom::element albedo = obj["albedo"];
+        simdjson::dom::element albedo = obj["albedo"];
 
-	if (albedo.type() == simdjson::dom::element_type::ARRAY) {
-	    return diffuse_material<F>{
-		load_color<F>(obj["albedo"]),
-		obj["smooth_shading"]
-	    };
-	} else if (albedo.type() == simdjson::dom::element_type::STRING) {
-	    std::string_view texture_name = obj["albedo"];
-	    return texture_material<F>{
-		std::string{texture_name},
-		obj["smooth_shading"]
-	    };
-	} else {
-	    throw std::invalid_argument("albedo neither array nor string");
-	}
+        if (albedo.type() == simdjson::dom::element_type::ARRAY) {
+            return diffuse_material<F>{
+                load_color<F>(obj["albedo"]),
+                obj["smooth_shading"]
+            };
+        } else if (albedo.type() == simdjson::dom::element_type::STRING) {
+            std::string_view texture_name = obj["albedo"];
+            return texture_material<F>{
+                std::string{texture_name},
+                obj["smooth_shading"]
+            };
+        } else {
+            throw std::invalid_argument("albedo neither array nor string");
+        }
     } else if (type == "reflective") {
-	return reflective_material<F>{
-	    load_color<F>(obj["albedo"]),
-	    obj["smooth_shading"]
-	};
+        return reflective_material<F>{
+            load_color<F>(obj["albedo"]),
+            obj["smooth_shading"]
+        };
     } else if (type == "refractive") {
-	return refractive_material<F>{
-	    load_f<F>(obj["ior"]),
-	    obj["smooth_shading"]
-	};
+        return refractive_material<F>{
+            load_f<F>(obj["ior"]),
+            obj["smooth_shading"]
+        };
     } else if (type == "constant") {
-	return constant_material<F>{
-	    load_color<F>(obj["albedo"]),
-	    obj["smooth_shading"]
-	};
+        return constant_material<F>{
+            load_color<F>(obj["albedo"]),
+            obj["smooth_shading"]
+        };
     } else {
-	throw std::invalid_argument("material type unknown");
+        throw std::invalid_argument("material type unknown");
     }
 }
 
@@ -153,82 +153,82 @@ mesh_object<F> load_mesh(simdjson::dom::object&& obj, std::size_t object_idx) {
     std::vector<vec3<F>> vertices;
     std::vector<F> vertex_buffer;
     for (auto vertex_component : obj["vertices"]) {
-	vertex_buffer.push_back(load_f<F>(std::move(vertex_component)));
+        vertex_buffer.push_back(load_f<F>(std::move(vertex_component)));
 
-	if (vertex_buffer.size() == 3) {
-	    vertices.push_back(vec3<F>{
-		vertex_buffer[0],
-		vertex_buffer[1],
-		vertex_buffer[2]
-	    });
+        if (vertex_buffer.size() == 3) {
+            vertices.push_back(vec3<F>{
+                vertex_buffer[0],
+                vertex_buffer[1],
+                vertex_buffer[2]
+            });
 
-	    vertex_buffer.clear();
-	}
+            vertex_buffer.clear();
+        }
     }
 
     if (!vertex_buffer.empty()) {
-	throw std::invalid_argument("vertex coordinates not multiple of 3");
+        throw std::invalid_argument("vertex coordinates not multiple of 3");
     }
 
     std::vector<vec2<F>> uvs;
     if (auto uv_array = obj["uvs"].get_array(); !uv_array.error()) {
-	std::vector<F> uv_buffer;
-	for (auto uv_component : uv_array) {
-	    uv_buffer.push_back(load_f<F>(std::move(uv_component)));
+        std::vector<F> uv_buffer;
+        for (auto uv_component : uv_array) {
+            uv_buffer.push_back(load_f<F>(std::move(uv_component)));
 
-	    if (uv_buffer.size() == 3) {
-		uvs.push_back(vec2<F>{
-		    uv_buffer[0],
-		    uv_buffer[1]
-		});
+            if (uv_buffer.size() == 3) {
+                uvs.push_back(vec2<F>{
+                    uv_buffer[0],
+                    uv_buffer[1]
+                });
 
-		uv_buffer.clear();
-	    }
-	}
+                uv_buffer.clear();
+            }
+        }
 
-	if (!uv_buffer.empty()) {
-	    throw std::invalid_argument("uv coordinates not multiple of 3");
-	}
+        if (!uv_buffer.empty()) {
+            throw std::invalid_argument("uv coordinates not multiple of 3");
+        }
     }
 
     std::vector<triangle<F>> triangles;
     std::vector<std::size_t> triangle_buffer;
     for (auto triangle_index : obj["triangles"]) {
-	triangle_buffer.push_back(triangle_index);
+        triangle_buffer.push_back(triangle_index);
 
-	if (triangle_buffer.size() == 3) {
-	    vec3<vec2<F>> triangle_uvs{};
+        if (triangle_buffer.size() == 3) {
+            vec3<vec2<F>> triangle_uvs{};
 
-	    if (!uvs.empty()) {
-		triangle_uvs = vec3<vec2<F>>{
-		    uvs[triangle_buffer[0]],
-		    uvs[triangle_buffer[1]],
-		    uvs[triangle_buffer[2]]
-		};
-	    }
+            if (!uvs.empty()) {
+                triangle_uvs = vec3<vec2<F>>{
+                    uvs[triangle_buffer[0]],
+                    uvs[triangle_buffer[1]],
+                    uvs[triangle_buffer[2]]
+                };
+            }
 
-	    triangles.push_back(triangle<F>{
-		vertices[triangle_buffer[0]],
-		vertices[triangle_buffer[1]],
-		vertices[triangle_buffer[2]],
-		{triangle_buffer[0], triangle_buffer[1], triangle_buffer[2]},
-		object_idx,
-		triangle_uvs 
-	    });
+            triangles.push_back(triangle<F>{
+                vertices[triangle_buffer[0]],
+                vertices[triangle_buffer[1]],
+                vertices[triangle_buffer[2]],
+                {triangle_buffer[0], triangle_buffer[1], triangle_buffer[2]},
+                object_idx,
+                triangle_uvs 
+            });
 
-	    triangle_buffer.clear();
-	}
+            triangle_buffer.clear();
+        }
     }
 
     if (!triangle_buffer.empty()) {
-	throw std::invalid_argument("triangle indices not multiple of 3");
+        throw std::invalid_argument("triangle indices not multiple of 3");
     }
 
     return mesh_object<F>{
-	material_index,
-	vertices,
-	uvs,
-	triangles
+        material_index,
+        vertices,
+        uvs,
+        triangles
     };
 }
 
@@ -244,21 +244,21 @@ scene<F> parse_scene_file(const std::filesystem::path& path) {
     scene.viewpoint = load_camera<F>(doc["camera"]);
 
     for (auto light : doc["lights"]) {
-	scene.lights.push_back(load_light<F>(light));
+        scene.lights.push_back(load_light<F>(light));
     }
 
     if (auto textures = doc["textures"].get_array(); !textures.error()) {
-	for (auto texture : textures) {
-	    scene.textures.emplace(texture["name"], load_texture<F>(texture));
-	}
+        for (auto texture : textures) {
+            scene.textures.emplace(texture["name"], load_texture<F>(texture));
+        }
     }
 
     for (auto material : doc["materials"]) {
-	scene.materials.emplace_back(load_material<F>(material));
+        scene.materials.emplace_back(load_material<F>(material));
     }
 
     for (auto [object_idx, object] : doc["objects"] | std::ranges::views::enumerate) {
-	scene.meshes.emplace_back(load_mesh<F>(object, object_idx));
+        scene.meshes.emplace_back(load_mesh<F>(object, object_idx));
     }
 
     return scene;

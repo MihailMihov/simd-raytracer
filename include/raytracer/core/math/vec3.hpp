@@ -9,85 +9,85 @@ struct vec3 {
     F x, y, z;
 
     [[nodiscard]] constexpr F operator[](const std::size_t idx) const noexcept {
-	assert(idx == 0 || idx == 1 || idx == 2);
-	[[assume(idx == 0 || idx == 1 || idx == 2)]];
+        assert(idx == 0 || idx == 1 || idx == 2);
+        [[assume(idx == 0 || idx == 1 || idx == 2)]];
 
-	switch (idx) {
-	    case 0:
-		return x;
-	    case 1:
-		return y;
-	    case 2:
-		return z;
-	    default:
-		std::unreachable();
-	};
+        switch (idx) {
+            case 0:
+                return x;
+            case 1:
+                return y;
+            case 2:
+                return z;
+            default:
+                std::unreachable();
+        };
     }
 
     [[nodiscard]] constexpr F& operator[](const std::size_t idx) noexcept {
-	assert(idx == 0 || idx == 1 || idx == 2);
-	[[assume(idx == 0 || idx == 1 || idx == 2)]];
+        assert(idx == 0 || idx == 1 || idx == 2);
+        [[assume(idx == 0 || idx == 1 || idx == 2)]];
 
-	switch (idx) {
-	    case 0:
-		return x;
-	    case 1:
-		return y;
-	    case 2:
-		return z;
-	    default:
-		std::unreachable();
-	};
+        switch (idx) {
+            case 0:
+                return x;
+            case 1:
+                return y;
+            case 2:
+                return z;
+            default:
+                std::unreachable();
+        };
     }
 
     [[nodiscard]] constexpr vec3<F> operator-() const noexcept {
-	return {-x, -y, -z};
+        return {-x, -y, -z};
     }
 
     constexpr vec3<F>& operator+=(const vec3<F>& other) noexcept {
-	x += other.x;
-	y += other.y;
-	z += other.z;
-	return *this;
+        x += other.x;
+        y += other.y;
+        z += other.z;
+        return *this;
     }
 
     constexpr vec3<F>& operator-=(const vec3<F>& other) noexcept {
-	x -= other.x;
-	y -= other.y;
-	z -= other.z;
-	return *this;
+        x -= other.x;
+        y -= other.y;
+        z -= other.z;
+        return *this;
     }
 
     constexpr vec3<F>& operator*=(const F scalar) noexcept {
-	x *= scalar;
-	y *= scalar;
-	z *= scalar;
-	return *this;
+        x *= scalar;
+        y *= scalar;
+        z *= scalar;
+        return *this;
     }
 
     constexpr vec3<F>& operator/=(const F scalar) noexcept {
-	assert(scalar != 0);
-	[[assume(scalar != 0)]];
-	x /= scalar;
-	y /= scalar;
-	z /= scalar;
-	return *this;
+        assert(scalar != 0);
+        [[assume(scalar != 0)]];
+        x /= scalar;
+        y /= scalar;
+        z /= scalar;
+        return *this;
     }
 
     [[nodiscard]] constexpr vec3<F> operator+(const vec3<F>& rhs) const noexcept {
-	return {x + rhs.x, y + rhs.y, z + rhs.z};
+        return {x + rhs.x, y + rhs.y, z + rhs.z};
     }
 
     [[nodiscard]] constexpr vec3<F> operator-(const vec3<F>& rhs) const noexcept {
-	return {x - rhs.x, y - rhs.y, z - rhs.z};
+        return {x - rhs.x, y - rhs.y, z - rhs.z};
     }
 
     [[nodiscard]] constexpr F len_squared() const noexcept {
-	return x * x + y * y + z * z;
+        return x * x + y * y + z * z;
     }
 
     [[nodiscard]] constexpr F len() const noexcept {
-	return std::sqrt(len_squared());
+        return std::sqrt(len_squared());
     }
 };
 
@@ -124,8 +124,8 @@ template <typename F>
 template <typename F>
 [[nodiscard]] constexpr vec3<F> cross(const vec3<F>& lhs, const vec3<F>& rhs) noexcept {
     return {
-	lhs.y * rhs.z - lhs.z * rhs.y,
-	lhs.z * rhs.x - lhs.x * rhs.z,
-	lhs.x * rhs.y - lhs.y * rhs.x
+        lhs.y * rhs.z - lhs.z * rhs.y,
+        lhs.z * rhs.x - lhs.x * rhs.z,
+        lhs.x * rhs.y - lhs.y * rhs.x
     };
 }

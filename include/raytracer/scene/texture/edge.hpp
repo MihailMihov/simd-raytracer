@@ -11,13 +11,13 @@ struct edge_texture {
     F edge_width;
 
     color<F> sample(const hit<F>& hit, [[maybe_unused]] const vec3<vec2<F>>& uvs) const {
-	const F hit_u = hit.u;
-	const F hit_v = hit.v;
-	const F hit_w = 1. - hit_u - hit_v;
+        const F hit_u = hit.u;
+        const F hit_v = hit.v;
+        const F hit_w = 1. - hit_u - hit_v;
 
-	if (hit_u < edge_width || hit_v < edge_width || hit_w < edge_width)
-	    return edge_color;
+        if (hit_u < edge_width || hit_v < edge_width || hit_w < edge_width)
+            return edge_color;
 
-	return inner_color;
+        return inner_color;
     }
 };

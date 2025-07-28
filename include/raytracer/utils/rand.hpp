@@ -5,12 +5,12 @@
 template <typename F>
 F urand01() noexcept {
     const auto get_rng_seed = []{
-	if constexpr (fixed_rng_seed.has_value()) {
-	    return fixed_rng_seed.value();
-	} else {
-	    std::random_device rd;
-	    return rd();
-	}
+        if constexpr (fixed_rng_seed.has_value()) {
+            return fixed_rng_seed.value();
+        } else {
+            std::random_device rd;
+            return rd();
+        }
     };
 
     thread_local std::minstd_rand engine(get_rng_seed());

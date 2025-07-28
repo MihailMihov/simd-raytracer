@@ -19,16 +19,16 @@ image<F> load_bitmap(const std::string& file_path) {
     const auto color_scale = F(1.0 / 255.0);
 
     for (int j = 0; j < height; ++j) {
-	buffer[j].resize(width);
-	for (int i = 0; i < width; ++i) {
-	    const auto pixel_offset = (j * width + i) * channels_in_file;
+        buffer[j].resize(width);
+        for (int i = 0; i < width; ++i) {
+            const auto pixel_offset = (j * width + i) * channels_in_file;
 
-	    auto r = static_cast<F>(data[pixel_offset + 0]) * color_scale;
-	    auto g = static_cast<F>(data[pixel_offset + 1]) * color_scale;
-	    auto b = static_cast<F>(data[pixel_offset + 2]) * color_scale;
+            auto r = static_cast<F>(data[pixel_offset + 0]) * color_scale;
+            auto g = static_cast<F>(data[pixel_offset + 1]) * color_scale;
+            auto b = static_cast<F>(data[pixel_offset + 2]) * color_scale;
 
-	    buffer[j][i] = color<F>(r, g, b);
-	}
+            buffer[j][i] = color<F>(r, g, b);
+        }
     }
 
     stbi_image_free(data);
@@ -41,21 +41,21 @@ struct bitmap_texture {
     image<F> texture;
     
     bitmap_texture(const std::string& file_path)
-	: texture(load_bitmap<F>(file_path)) {}
+        : texture(load_bitmap<F>(file_path)) {}
 
     constexpr color<F> sample(const hit<F>& hit, const vec3<vec2<F>>& uvs) const {
-	F hit_u = hit.u;
-	F hit_v = hit.v;
-	F hit_w = 1. - hit_u - hit_v;
+        F hit_u = hit.u;
+        F hit_v = hit.v;
+        F hit_w = 1. - hit_u - hit_v;
 
-	vec2<F> final_uv = hit_w * uvs.x + hit_u * uvs.y + hit_v * uvs.z;
+        vec2<F> final_uv = hit_w * uvs.x + hit_u * uvs.y + hit_v * uvs.z;
 
-	std::size_t row = (1. - final_uv.y) * texture.get_height();
-	std::size_t column = final_uv.x * texture.get_width();
+        std::size_t row = (1. - final_uv.y) * texture.get_height();
+        std::size_t column = final_uv.x * texture.get_width();
 
-	row = std::clamp(row, 0uz, texture.get_height() - 1);
-	column = std::clamp(column, 0uz, texture.get_width() - 1);
+        row = std::clamp(row, 0uz, texture.get_height() - 1);
+        column = std::clamp(column, 0uz, texture.get_width() - 1);
 
-	return texture.get_pixel(row, column);
+        return texture.get_pixel(row, column);
     }
 };

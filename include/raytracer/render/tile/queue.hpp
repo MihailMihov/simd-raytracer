@@ -15,37 +15,37 @@ struct tile_queue {
     tile_queue& operator=(const tile_queue&) = delete;
     
     tile_queue(tile_queue&& other) noexcept
-	: queue(std::move(other.queue)) {}
+        : queue(std::move(other.queue)) {}
 
     std::size_t size() {
-	std::lock_guard guard(mutex);
-	return queue.size();
+        std::lock_guard guard(mutex);
+        return queue.size();
     }
 
     void push(render_tile new_tile) {
-	std::lock_guard guard(mutex);
-	queue.push(new_tile);
+        std::lock_guard guard(mutex);
+        queue.push(new_tile);
     }
 
     std::optional<render_tile> pop() {
-	std::lock_guard guard(mutex);
+        std::lock_guard guard(mutex);
 
-	if (queue.empty()) {
-	    return std::nullopt;
-	}
+        if (queue.empty()) {
+            return std::nullopt;
+        }
 
-	render_tile popped_tile = queue.front();
-	queue.pop();
+        render_tile popped_tile = queue.front();
+        queue.pop();
 
-	return popped_tile;
+        return popped_tile;
     }
 
     tile_queue& operator=(tile_queue&& other) noexcept {
-	if (this != &other) {
-	    std::scoped_lock lock(mutex, other.mutex);
-	    queue = std::move(other.queue);
-	}
+        if (this != &other) {
+            std::scoped_lock lock(mutex, other.mutex);
+            queue = std::move(other.queue);
+        }
 
-	return *this;
+        return *this;
     }
 };

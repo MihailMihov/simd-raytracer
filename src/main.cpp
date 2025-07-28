@@ -26,9 +26,9 @@ requires accelerator<A, F> {
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-	std::println("Usage: ./raytracer FILE");
+        std::println("Usage: ./raytracer FILE");
 
-	return 1;
+        return 1;
     }
 
     const std::filesystem::path& scene_file_path = argv[1];
