@@ -1,8 +1,9 @@
 simd-raytracer
 ---
-`simd-raytracer` is a high-performance raytracer with support for reading
-`.crtscene` JSON scene files using `simdjson`, support for different material
-and texture kinds and a basic global illumination algorithm.
+`simd-raytracer` is a portable high-performance raytracer, written in C++23,
+with support for reading `.crtscene` JSON scene files using `simdjson`, support
+for different material and texture kinds and a basic global illumination
+algorithm.
 
 ### Quick links
 
@@ -20,12 +21,17 @@ the root directory of the project contains all the needed setup and it uses the
 for JSON parsing and `stb` for reading the texture files.
 
 On Linux setting up and running the project can be done as follows:
-1. `git clone https://github.com/mihailmihov/raytracer.git`
+1. `git clone https://github.com/mihailmihov/simd-raytracer.git`
 2. `cd raytracer`
 3. `mkdir build`
 4. `cmake -S . -B build -DCMAKE_BUILD_TYPE="Release"` [^1]
 5. `cmake --build build`
 6. `./build/raytracer scenes/hw15/scene2.crtscene`
+
+The scenes in `scenes/`, which depend on texture files (currently only
+`scenes/hw12/`) use relative paths starting from the project root directory, so
+the raytracer should be run from the project root when those are used, or the
+directories need to be changed accordingly.
 
 [^1]: It is also strongly recommended to add
     `-DCMAKE_CXX_FLAGS="-march=native"` for GCC/Clang or `/arch:AVX2` for MSVC,
@@ -85,6 +91,14 @@ trees compared to binary structures like a kd-tree, and the traversal should be
 vectorizable. An octree might also be a good candidate as it also has 8
 children per node, when used in 3D, but according to my limited research a BVH
 performs much better in most cases.
+
+Additionally the SIMD implementation is fully portable, because it is based on
+the experimental parallelism technical specification v2 (will become part of
+ISO C++ with C++26). The data-parallel types used are based on
+`std::experimental::native_simd`, which takes up the width that would be most
+efficient for the given data type and platform. No CPU/architecture specific
+intrinsics are used, so the project would work just as well on ARM or any other
+exotic architecture and it would fully make use of its SIMD capabilities.
 
 ## Materials
 
