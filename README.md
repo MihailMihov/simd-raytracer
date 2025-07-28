@@ -102,7 +102,7 @@ Currently the supported materials are:
   value should be the fraction: $\dfrac{\text{speed of light in
   material}}{\text{speed of light in vacuum}}$.
 - texture: The textured material behaves like the diffuse material, except that
-  instead of an albedo a texture can be used (see [Textures](#textures)). Also
+  instead of an albedo, a texture can be used (see [Textures](#textures)). Also
   indirect lighting is not implemented for texture materials, although the
   implementaions should be the same as the one for diffuse materials.
 - constant: The constant material just has an `albedo`, which is it's color at
@@ -111,4 +111,13 @@ Currently the supported materials are:
 
 ## Textures
 
-
+Currently the supported textures are:
+- albedo: The albedo texture has just that, an `albedo` (color).
+- edge: The edge texture has an `inner_color`, an `outer_color` and an
+  `edge_width`, specifying how wide an edge of the triangle is.
+- checker: The checker texture has two colors (`color_a` and `color_b`) and a
+  `square_size`. It repeats the two colors in a checker pattern and it respects
+  the `uv` coordinates of the vertices.
+- bitmap: The bitmap texture is loaded from a file using `stb_image`'s
+  `stbi_load`. It then maps the image onto the mesh, also respecting the
+  vertices' `uv` coordinates to position the texture properly.
