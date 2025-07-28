@@ -6,7 +6,7 @@
 
 #include <raytracer/scene/color.hpp>
 #include <raytracer/scene/image.hpp>
-#include <raytracer/render/hit_record.hpp>
+#include <raytracer/render/hit.hpp>
 
 template <typename F>
 image<F> load_bitmap(const std::string& file_path) {

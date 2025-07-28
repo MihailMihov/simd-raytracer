@@ -1,8 +1,8 @@
 #pragma once
 
-#include "raytracer/core/math/vec2.hpp"
+#include <raytracer/core/math/vec2.hpp>
 #include <raytracer/scene/color.hpp>
-#include <raytracer/render/hit_record.hpp>
+#include <raytracer/render/hit.hpp>
 
 template <typename F>
 struct edge_texture {

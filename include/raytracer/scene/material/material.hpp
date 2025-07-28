@@ -2,11 +2,11 @@
 
 #include <variant>
 
-#include <raytracer/scene/material/constant_material.hpp>
-#include <raytracer/scene/material/diffuse_material.hpp>
-#include <raytracer/scene/material/reflective_material.hpp>
-#include <raytracer/scene/material/refractive_material.hpp>
-#include <raytracer/scene/material/texture_material.hpp>
+#include <raytracer/scene/material/constant.hpp>
+#include <raytracer/scene/material/diffuse.hpp>
+#include <raytracer/scene/material/reflective.hpp>
+#include <raytracer/scene/material/refractive.hpp>
+#include <raytracer/scene/material/texture.hpp>
 
 template <typename F>
 using material_variant = std::variant<diffuse_material<F>, reflective_material<F>, refractive_material<F>, constant_material<F>, texture_material<F>>;

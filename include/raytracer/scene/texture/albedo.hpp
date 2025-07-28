@@ -2,7 +2,7 @@
 
 #include <raytracer/scene/texture/texture.hpp>
 #include <raytracer/scene/color.hpp>
-#include <raytracer/render/hit_record.hpp>
+#include <raytracer/render/hit.hpp>
 
 template <typename F>
 struct albedo_texture {

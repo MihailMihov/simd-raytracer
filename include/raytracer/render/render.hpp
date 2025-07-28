@@ -4,8 +4,8 @@
 #include <random>
 
 #include <raytracer/scene/scene.hpp>
-#include <raytracer/scene/material/material_queries.hpp>
-#include <raytracer/scene/texture/texture_queries.hpp>
+#include <raytracer/scene/material/queries.hpp>
+#include <raytracer/scene/texture/queries.hpp>
 #include <raytracer/render/accel/accel.hpp>
 #include <raytracer/render/tile/tile.hpp>
 #include <raytracer/render/tile/queue.hpp>
