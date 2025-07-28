@@ -18,7 +18,7 @@ algorithm.
 
 The project uses CMake as a build configuration system. The `CMakeLists.txt` in
 the root directory of the project contains all the needed setup and it uses the
-`FetchContent` module to fetch and setup the neccessary libraries, `simdjson`
+`FetchContent` module to fetch and setup the necessary libraries, `simdjson`
 for JSON parsing and `stb` for reading the texture files.
 
 On Linux setting up and running the project can be done as follows:
@@ -102,13 +102,13 @@ triangles at once, where W is dependant on the platform's SIMD capabilities and
 on the floating point data type that is used.
 
 Below is a table showing the
-theoretical possible speed-ups:
+theoretical possible speedups, relative to a legacy machine with 32-bit `float`s:
 
 | Level                     | Instruction Set   | `float` (32-bit) speedup | `double` (64-bit) speedup |
 |---------------------------|-------------------|--------------------------|---------------------------|
 | **Legacy**                | (no SIMD)         | 1x                       | 0.5x                      |
-| **Consumer**              | AVX2 (256-bit)    | 8x                       | 2x                        |
-| **HEDT/Professional**     | AVX512 (512-bit)  | 16x                      | 4x                        |
+| **Consumer**              | AVX2 (256-bit)    | 8x                       | 4x                        |
+| **HEDT/Professional**     | AVX512 (512-bit)  | 16x                      | 8x                        |
 
 These are only the theoretical possible speedups, which are not obtained in
 practice. On my consumer laptop with AVX2 I observed a ~5x speedup when using
@@ -145,11 +145,11 @@ Currently the supported materials are:
   which both reflects rays, but also refracts them internally. It has an `ior`
   (index of refraction), which controls the angle of the refraction rays. The
   value should be the fraction: $\dfrac{\text{speed of light in
-  material}}{\text{speed of light in vacuum}}$.
+  vacuum}}{\text{speed of light in material}}$.
 - texture: The textured material behaves like the diffuse material, except that
   instead of an albedo, a texture can be used (see [Textures](#textures)). Also
   indirect lighting is not implemented for texture materials, although the
-  implementaions should be the same as the one for diffuse materials.
+  implementations should be the same as the one for diffuse materials.
 - constant: The constant material just has an `albedo`, which is it's color at
   any point. There are no shadows, reflections, refractions or textures applied
   to it.
