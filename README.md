@@ -9,6 +9,8 @@ and texture kinds and a basic global illumination algorithm.
 * [Quick start](#quick-start)
 * [Configuration](#configuration)
 * [Acceleration structures](#acceleration-structures)
+* [Materials](#materials)
+* [Textures](#textures)
 
 ## Quick start
 
@@ -60,7 +62,9 @@ either a max depth or minimum of contained triangles is reached. The difference
 between the kd-tree variants is that the `_simd` variant stores packets of
 triangles in the leaf nodes, so that a single ray can be intersected with W
 triangles at once, where W is dependant on the platform's SIMD capabilities and
-on the floating point data type that is used. Below is a table showing the
+on the floating point data type that is used.
+
+Below is a table showing the
 theoretical possible speed-ups:
 
 | Level                     | Instruction Set   | `float` (32-bit) speedup | `double` (64-bit) speedup |
@@ -81,3 +85,30 @@ trees compared to binary structures like a kd-tree, and the traversal should be
 vectorizable. An octree might also be a good candidate as it also has 8
 children per node, when used in 3D, but according to my limited research a BVH
 performs much better in most cases.
+
+## Materials
+
+Currently the supported materials are:
+- diffuse: The diffuse material behaves like an opaque material. It has an
+  `albedo` (color) and it can be shadowes by other non-transmissive materials
+  on the path between it and the light source. If diffuse reflections are
+  enabled (`diffuse_reflection_ray_count` > 0) then indirect lighting is
+  simulated by further tracing rays along the hemisphere of the hit.
+- reflective: The reflective material behaves like a perfect mirror, which
+  reflects all rays that intersect with it. It has no configurable properties.
+- refractive: The refractive material behaves like a semi-transparent material,
+  which both reflects rays, but also refracts them internally. It has an `ior`
+  (index of refraction), which controls the angle of the refraction rays. The
+  value should be the fraction: $\dfrac{\text{speed of light in
+  material}}{\text{speed of light in vacuum}}$.
+- texture: The textured material behaves like the diffuse material, except that
+  instead of an albedo a texture can be used (see [Textures](#textures)). Also
+  indirect lighting is not implemented for texture materials, although the
+  implementaions should be the same as the one for diffuse materials.
+- constant: The constant material just has an `albedo`, which is it's color at
+  any point. There are no shadows, reflections, refractions or textures applied
+  to it.
+
+## Textures
+
+
